@@ -273,6 +273,9 @@ namespace PintoolControl {
 				g_activeBuffer = nullptr;
 			}
 		#endif
+		 else {
+			std::cout << "Pintool Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
+		}
 	}
 }
 
