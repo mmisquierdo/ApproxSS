@@ -253,6 +253,8 @@ namespace PintoolControl {
 
 				g_generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
 			}
+		} else {
+			std::cout << "Pintool Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
 		}
 	}
 
