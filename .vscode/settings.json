@@ -85,6 +85,7 @@
 		"iostream": "cpp",
 		"numbers": "cpp",
 		"numeric": "cpp",
-		"utility": "cpp"
+		"utility": "cpp",
+		"unordered_set": "cpp"
 	}
 }

@@ -35,6 +35,7 @@ END_LEGAL */
 #include <stdio.h>
 #include "pin.H"
 #include <set>
+#include <unordered_set>
 #include <map>
 #include <iostream>
 #include <fstream>
@@ -59,6 +60,24 @@ uint64_t g_currentPeriod = 0;
 #else
 	#define ASSERT_ACCESS_INSTRUMENTATION_ACTIVE()
 	#define SET_ACCESS_INSTRUMENTATION_STATUS(stat)
+#endif
+
+#if PINPOINT_ACCESS_INSTRUMENTATION
+	std::unordered_set<INT32> g_missAccesses;
+
+	#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+		std::unordered_set<INT32> g_hitAccesses;
+	#endif
+#endif
+
+#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+	#define AND_EXTRACTOR_PARAMETER , const INT32 index
+	#define AND_EXTRACTOR_SINGLE_ARGUMENT(X) , X
+	#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y) , X, Y
+#else
+	#define AND_EXTRACTOR_PARAMETER
+	#define AND_EXTRACTOR_SINGLE_ARGUMENT(X)
+	#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y)
 #endif
 
 std::ofstream g_accessOutputLog;
@@ -99,7 +118,7 @@ ConsumptionProfileMap 		g_consumptionProfiles;
 /* ==================================================================== */
 
 namespace AccessHandler {
-	VOID CheckAndForward(void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+	VOID CheckAndForward(void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes AND_EXTRACTOR_PARAMETER) {
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator approxBuffer = g_activeBuffers.find(Range{accessedAddress, accessedAddress});
 			if (approxBuffer != g_activeBuffers.cend()) {
@@ -110,27 +129,32 @@ namespace AccessHandler {
 				(*g_activeBuffer.*function)(accessedAddress, accessSizeInBytes);
 			}
 		#endif
+		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+			  else {
+				g_missAccesses.insert(index);
+			}
+		#endif
 	}
 
 	// memory read
-	VOID HandleMemoryReadSIMD(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryReadSIMD(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes AND_EXTRACTOR_PARAMETER) {		
+		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 
-	VOID HandleMemoryRead(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryRead(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes AND_EXTRACTOR_PARAMETER) {		
+		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 
 	// memory write
-	VOID HandleMemoryWriteSIMD(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWriteSIMD(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes AND_EXTRACTOR_PARAMETER) {
+		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 
-	VOID HandleMemoryWrite(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWrite(uint8_t* const accessedAddress, const UINT32 accessSizeInBytes AND_EXTRACTOR_PARAMETER) {
+		CheckAndForward(&ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 
-	VOID CheckAndForwardScattered(void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo, const size_t errorCat) {
+	VOID CheckAndForwardScattered(void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo, const size_t errorCat AND_EXTRACTOR_PARAMETER) {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
@@ -149,9 +173,12 @@ namespace AccessHandler {
 				bufferP = g_activeBuffer;
 			}
 		#endif
-			 else {
+		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+			  else {
+				g_missAccesses.insert(index);
 				return;
 			}
+		#endif
 
 		const bool shouldInject = bufferP->GetShouldInject(errorCat);
 
@@ -161,12 +188,12 @@ namespace AccessHandler {
 		}
 	}
 
-	VOID HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(&ChosenTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe, memOpInfo, ErrorCategory::Read);
+	VOID HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo AND_EXTRACTOR_PARAMETER) {
+		CheckAndForwardScattered(&ChosenTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe, memOpInfo, ErrorCategory::Read AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 
-	VOID HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(&ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe, memOpInfo, ErrorCategory::Write);
+	VOID HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo AND_EXTRACTOR_PARAMETER) {
+		CheckAndForwardScattered(&ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe, memOpInfo, ErrorCategory::Write AND_EXTRACTOR_SINGLE_ARGUMENT(index));
 	}
 }
 
@@ -292,6 +319,13 @@ namespace TargetInstrumentation {
 
 		ASSERT_ACCESS_INSTRUMENTATION_ACTIVE()
 
+		#if PINPOINT_ACCESS_INSTRUMENTATION_USER
+			const auto& it = g_missAccesses.find(ins.index);
+			if (it == g_missAccesses.cend()) {
+				return;
+			}
+		#endif
+
 		const UINT32 memOperands = INS_MemoryOperandCount(ins);
 		// Iterate over each memory operand of the instruction.
 		for (UINT32 memOp = 0; memOp < memOperands; ++memOp) {		
@@ -300,18 +334,18 @@ namespace TargetInstrumentation {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
 							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD,
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
+							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
 							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead,
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
+							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 							IARG_END);
 					}
 				} else {
 					INS_InsertPredicatedCall(
 						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered,
-						IARG_MULTI_ELEMENT_OPERAND, memOp,
+						IARG_MULTI_ELEMENT_OPERAND, memOp AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 						IARG_END);
 				}
 			}
@@ -324,18 +358,18 @@ namespace TargetInstrumentation {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
 							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD,
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
+							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
 							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite,
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
+							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 							IARG_END);
 					}
 				} else {
 					INS_InsertPredicatedCall(
 						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered,
-						IARG_MULTI_ELEMENT_OPERAND, memOp,
+						IARG_MULTI_ELEMENT_OPERAND, memOp AND_EXTRACTOR_DOUBLE_ARGUMENT(IARG_UINT32, ins.index),
 						IARG_END);
 				}
 			}
@@ -602,6 +636,14 @@ namespace PintoolOutput {
 		}
 
 		PintoolOutput::DeleteDataEstructures();
+
+		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+			std::ofstream missOutput{"misses.txt"};
+			for (const auto& it : g_missAccesses) {
+				missOutput << it << '\n';
+			}
+			missOutput.close();
+		#endif 
 	}
 }
 
@@ -645,6 +687,17 @@ int main(const int argc, char* argv[]) {
 	if (!g_consumptionProfiles.empty()) {
 		PintoolOutput::CreateOutputLog(g_energyConsumptionOutputLog, EnergyConsumptionOutputFile.Value(), "energyConsumpion.log");
 	}
+
+	#if PINPOINT_ACCESS_INSTRUMENTATION_USER
+		std::ifstream missFile{"misses.txt"};
+		while (missFile) {
+			INT32 index;
+			missFile >> index;
+			g_missAccesses.insert(index);
+		}
+	#endif
+	
+
 
 	// Register Routine to be called to instrument rtn
 	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, 0);
