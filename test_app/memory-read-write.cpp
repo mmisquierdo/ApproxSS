@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../approx.h"
+#include "../instrumentation_dummies/approx.h"
 //#include "immintrin.h"
 
 #define SIZE 20000
