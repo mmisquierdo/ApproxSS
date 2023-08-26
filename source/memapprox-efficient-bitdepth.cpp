@@ -63,21 +63,22 @@ uint64_t g_currentPeriod = 0;
 #endif
 
 #if PINPOINT_ACCESS_INSTRUMENTATION
-	std::unordered_set<INT32> g_missAccesses;
-
 	#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
 		std::unordered_set<INT32> g_hitAccesses;
-	#endif
-#endif
+		std::unordered_set<INT32> g_missAccesses;
 
-#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
-	#define AND_EXTRACTOR_PARAMETER , const INT32 index
-	#define AND_EXTRACTOR_SINGLE_ARGUMENT(X) , X
-	#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y) , X, Y
-#else
-	#define AND_EXTRACTOR_PARAMETER
-	#define AND_EXTRACTOR_SINGLE_ARGUMENT(X)
-	#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y)
+		#define AND_EXTRACTOR_PARAMETER , const INT32 index
+		#define AND_EXTRACTOR_SINGLE_ARGUMENT(X) , X
+		#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y) , X, Y
+	#else
+		#define AND_EXTRACTOR_PARAMETER
+		#define AND_EXTRACTOR_SINGLE_ARGUMENT(X)
+		#define AND_EXTRACTOR_DOUBLE_ARGUMENT(X, Y)
+	#endif
+
+	#if PINPOINT_ACCESS_INSTRUMENTATION_USER
+		std::unordered_set<INT32> g_exclusiveMissAccesses;
+	#endif
 #endif
 
 std::ofstream g_accessOutputLog;
@@ -123,10 +124,17 @@ namespace AccessHandler {
 			const ActiveBuffers::const_iterator approxBuffer = g_activeBuffers.find(Range{accessedAddress, accessedAddress});
 			if (approxBuffer != g_activeBuffers.cend()) {
 				(*(approxBuffer->second).*function)(accessedAddress, accessSizeInBytes);
+
+				#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+					g_hitAccesses.insert(index);
+				#endif
 			}
 		#else
 			if (g_activeBuffer != nullptr && g_activeBuffer->DoesIntersectWith(accessedAddress)) {
 				(*g_activeBuffer.*function)(accessedAddress, accessSizeInBytes);
+				#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+					g_hitAccesses.insert(index);
+				#endif
 			}
 		#endif
 		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
@@ -167,10 +175,16 @@ namespace AccessHandler {
 			const ActiveBuffers::const_iterator approxBuffer = g_activeBuffers.find(Range{accessedAddress, accessedAddress});
 			if (approxBuffer != g_activeBuffers.cend()) {
 				bufferP = approxBuffer->second;
+				#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+					g_hitAccesses.insert(index);
+				#endif
 			}
 		#else
 			if (g_activeBuffer != nullptr && g_activeBuffer->DoesIntersectWith(accessedAddress)) {
 				bufferP = g_activeBuffer;
+				#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
+					g_hitAccesses.insert(index);
+				#endif
 			}
 		#endif
 		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
@@ -320,8 +334,8 @@ namespace TargetInstrumentation {
 		ASSERT_ACCESS_INSTRUMENTATION_ACTIVE()
 
 		#if PINPOINT_ACCESS_INSTRUMENTATION_USER
-			const auto& it = g_missAccesses.find(ins.index);
-			if (it == g_missAccesses.cend()) {
+			const auto& it = g_exclusiveMissAccesses.find(ins.index);
+			if (it == g_exclusiveMissAccesses.cend()) {
 				return;
 			}
 		#endif
@@ -640,7 +654,9 @@ namespace PintoolOutput {
 		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
 			std::ofstream missOutput{"misses.txt"};
 			for (const auto& it : g_missAccesses) {
-				missOutput << it << '\n';
+				if (g_hitAccesses.find(it) != g_hitAccesses.cend()) {
+					missOutput << it << '\n';
+				}
 			}
 			missOutput.close();
 		#endif 
@@ -693,11 +709,9 @@ int main(const int argc, char* argv[]) {
 		while (missFile) {
 			INT32 index;
 			missFile >> index;
-			g_missAccesses.insert(index);
+			g_exclusiveMissAccesses.insert(index);
 		}
 	#endif
-	
-
 
 	// Register Routine to be called to instrument rtn
 	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, 0);
