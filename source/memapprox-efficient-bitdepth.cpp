@@ -62,7 +62,7 @@ uint64_t g_currentPeriod = 0;
 	#define SET_ACCESS_INSTRUMENTATION_STATUS(stat)
 #endif
 
-#if PINPOINT_ACCESS_INSTRUMENTATION
+//#if PINPOINT_ACCESS_INSTRUMENTATION
 	#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
 		std::unordered_set<INT32> g_hitAccesses;
 		std::unordered_set<INT32> g_missAccesses;
@@ -79,7 +79,7 @@ uint64_t g_currentPeriod = 0;
 	#if PINPOINT_ACCESS_INSTRUMENTATION_USER
 		std::unordered_set<INT32> g_exclusiveMissAccesses;
 	#endif
-#endif
+//#endif
 
 std::ofstream g_accessOutputLog;
 std::ofstream g_energyConsumptionOutputLog;
@@ -334,8 +334,7 @@ namespace TargetInstrumentation {
 		ASSERT_ACCESS_INSTRUMENTATION_ACTIVE()
 
 		#if PINPOINT_ACCESS_INSTRUMENTATION_USER
-			const auto& it = g_exclusiveMissAccesses.find(ins.index);
-			if (it == g_exclusiveMissAccesses.cend()) {
+			if (g_exclusiveMissAccesses.find(ins.index) != g_exclusiveMissAccesses.cend()) {
 				return;
 			}
 		#endif
@@ -654,7 +653,7 @@ namespace PintoolOutput {
 		#if PINPOINT_ACCESS_INSTRUMENTATION_EXTRACTOR
 			std::ofstream missOutput{"misses.txt"};
 			for (const auto& it : g_missAccesses) {
-				if (g_hitAccesses.find(it) != g_hitAccesses.cend()) {
+				if (g_hitAccesses.find(it) == g_hitAccesses.cend()) {
 					missOutput << it << '\n';
 				}
 			}
