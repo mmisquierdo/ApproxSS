@@ -134,7 +134,7 @@ namespace AccessHandler {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
-
+		
 		uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
 
 		ChosenTermApproximateBuffer* bufferP;
@@ -309,9 +309,10 @@ namespace TargetInstrumentation {
 							IARG_END);
 					}
 				} else {
+					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
 						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered,
-						IARG_MULTI_ELEMENT_OPERAND, memOp,
+						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
 			}
@@ -333,9 +334,10 @@ namespace TargetInstrumentation {
 							IARG_END);
 					}
 				} else {
+					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
 						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered,
-						IARG_MULTI_ELEMENT_OPERAND, memOp,
+						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
 			}
