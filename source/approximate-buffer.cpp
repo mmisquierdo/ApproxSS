@@ -105,7 +105,12 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 
 	this->m_creationPeriod = creationPeriod;
 
-	this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector);
+	const BufferLogs::const_iterator it = this->m_bufferLogs.find(creationPeriod);
+	if (it != this->m_bufferLogs.cend()) {
+		this->m_bufferLogs.erase(it);
+	} else {
+		this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector);
+	}
 
 	this->m_isActive = true;
 }
