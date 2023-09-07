@@ -9,8 +9,6 @@
 	}
 #endif
 
-#include <iostream>
-
 InjectorConfiguration::InjectorConfiguration() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;

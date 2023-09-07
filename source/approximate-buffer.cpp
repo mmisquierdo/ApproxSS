@@ -101,7 +101,7 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 		this->m_faultInjector.ResetBerIndex(creationPeriod);
 	#endif
 
-	this->InitializeRecordsAndBackups(creationPeriod);
+	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
 
 	this->m_creationPeriod = creationPeriod;
 
@@ -120,11 +120,11 @@ void ApproximateBuffer::StoreCurrentPeriodLog() {
 }
 
 void ApproximateBuffer::NextPeriod(const uint64_t period) {
-	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
-		#if ENABLE_PASSIVE_INJECTION
+	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR 
+		if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 			this->m_faultInjector.InjectFault(this->m_bufferRange.m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 			this->m_lastPassiveInjectionPeriod = period;
-		#endif
+		}
 	#endif
 
 	this->StoreCurrentPeriodLog();
@@ -239,8 +239,10 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			this->ApplyPassiveFault(this->m_bufferRange.m_initialAddress, this->m_bufferRange.m_finalAddress);
 		#else
 			if (this->GetCurrentPassiveBerMarker() != this->m_lastPassiveInjectionPeriod) {
-				this->m_faultInjector.InjectFault(this->m_bufferRange.m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
-				this->m_lastPassiveInjectionPeriod = g_currentPeriod;
+				if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
+					this->m_faultInjector.InjectFault(this->m_bufferRange.m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
+					this->m_lastPassiveInjectionPeriod = g_currentPeriod;
+				}
 			}
 		#endif
 	}
@@ -279,7 +281,9 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive);
 					#endif
 
-					this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, passiveErrorCount);
+					if (ber) {
+						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, passiveErrorCount);
+					}
 				}
 			#else
 				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
@@ -758,7 +762,7 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 	ApproximateBuffer::ReactivateBuffer(period);
 
-	this->InitializeRecordsAndBackups(period);
+	LongTermApproximateBuffer::InitializeRecordsAndBackups(period);
 }
 
 void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {

@@ -177,9 +177,9 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
 			DistanceBasedInjectorRecord& record = *(this->GetInjectorRecord(errorCat, recordIndex));
 
-			if (!record.IsEnabled()) {
+			/*if (!record.IsEnabled()) {
 				return;
-			}
+			}*/
 
 			this->InjectFault(data, record, accessSizeInBytes, toBackup AND_LOG_ARGUMENT(injectedByBit));
 		}
@@ -225,9 +225,9 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
 		DistanceBasedInjectorRecord& record = *(this->GetInjectorRecord(errorCat));
 
-		if (!record.IsEnabled()) {
+		/*if (!record.IsEnabled()) {
 			return;
-		}
+		}*/
 
 		this->InjectFault(data, record, accessSizeInBytes, toBackup AND_LOG_ARGUMENT(injectedByBit));
 	}
