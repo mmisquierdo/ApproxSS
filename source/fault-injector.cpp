@@ -66,18 +66,15 @@ GranularFaultInjector::GranularFaultInjector(const InjectorConfiguration& inject
 }
 
 void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
-	++g_injectionCalls;
-	bool isFaultInjected = false;
-	
+	++g_injectionCalls;	
 	const double randomProbability = m_occurrenceDistribution(FaultInjector::m_generator);
 
 	if (randomProbability < (ber * static_cast<double>(this->GetBitDepth()))) {
 		const size_t instanceIndex = this->m_instanceDistribution(FaultInjector::m_generator);
 		const uint8_t faultMask = FaultInjector::m_bitMask << (instanceIndex % BYTE_SIZE);
 
-		if (toBackup && !isFaultInjected) {
+		if (toBackup) {
 			toBackup->BackupReadData(data);
-			isFaultInjected = true;
 		}
 
 		data[instanceIndex/BYTE_SIZE] ^= faultMask;

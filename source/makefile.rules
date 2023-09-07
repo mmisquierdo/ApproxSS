@@ -24,7 +24,7 @@ TEST_ROOTS :=
 
 # This defines the tools which will be run during the the tests, and were not already defined in
 # TEST_TOOL_ROOTS.
-TOOL_ROOTS := memapprox-efficient-bitdepth
+TOOL_ROOTS := approxss
 
 # This defines the static analysis tools which will be run during the the tests. They should not
 # be defined in TEST_TOOL_ROOTS. If a test with the same name exists, it should be defined in
@@ -103,9 +103,9 @@ $(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buf
 	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
-$(OBJDIR)memapprox-efficient-bitdepth$(OBJ_SUFFIX): memapprox-efficient-bitdepth.cpp compiling-options.h
+$(OBJDIR)approxss$(OBJ_SUFFIX): approxss.cpp compiling-options.h
 	$(CXX) $(TOOL_CXXFLAGS) -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
-$(OBJDIR)memapprox-efficient-bitdepth$(PINTOOL_SUFFIX): $(OBJDIR)memapprox-efficient-bitdepth$(OBJ_SUFFIX) $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h
+$(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h
 	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
