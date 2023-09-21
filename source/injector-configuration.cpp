@@ -178,7 +178,8 @@ bool InjectorConfiguration::ShouldGoOn(const double ber) {
 
 void InjectorConfiguration::ReviseShouldGoOn(const size_t errorCat) {
 	#if MULTIPLE_BERS && ENABLE_PASSIVE_INJECTION
-		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) || (errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) > 1);
+		//this->m_shouldGoOn[errorCat] = (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
+		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
 	#else
 		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat));
 	#endif

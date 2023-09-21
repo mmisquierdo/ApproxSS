@@ -281,7 +281,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive);
 					#endif
 
-					if (ber) {
+					if (ber || !MULTIPLE_BERS) { //if MULTIPLE_BERS is false, the check is optimized away
 						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, passiveErrorCount);
 					}
 				}
@@ -289,7 +289,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
 				if (currentMarker > initialMarker) {
 					const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, initialMarker, currentMarker);
-					if (ber) {
+					if (ber || !MULTIPLE_BERS) {
 						#if OVERCHARGE_FLIP_BACK
 							this->m_faultInjector.InjectFaultOvercharged(accessedAddress, ber);
 						#else
