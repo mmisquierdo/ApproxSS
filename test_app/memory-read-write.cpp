@@ -2,6 +2,8 @@
 #include "../instrumentation_dummies/approx.h"
 //#include "immintrin.h"
 
+using namespace ApproxSS;
+
 #define SIZE 20000
 
 void copyArray(uint16_t* destination, uint16_t* source) {
