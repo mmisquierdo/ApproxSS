@@ -11,7 +11,6 @@ constexpr size_t BYTE_SIZE = 8;
 #define LONG_TERM_BUFFER 2
 
 /* DOEST NOT WORK WITH VSCODE TEXTVIEWER PREPROCESSING
-constexpr size_t BYTE_SIZE = 8;
 
 constexpr size_t DEFAULT_FAULT_INJECTOR = 1;
 constexpr size_t GRANULAR_FAULT_INJECTOR = 2;

@@ -319,7 +319,7 @@ void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std
 }
  
 
-void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
+void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
@@ -338,6 +338,7 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 
 	for (size_t i = 0; i < AccessTypes::Size; ++i) {
 		WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i], AccessTypesNames[i], "Buffer", padding);
+		totalTargetAccessesBytes[i] += bufferAccessedBytes[i];
 	}
 
 	outputLog << padding << "Buffer Active Periods: " << activePeriodsCount << std::endl;

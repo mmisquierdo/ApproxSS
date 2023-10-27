@@ -134,7 +134,7 @@ class ApproximateBuffer {
 		int64_t GetConfigurationId() const;
 
 		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
-		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
+		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding = "") const;
 
 		bool GetShouldInject(const size_t errorCat) const;

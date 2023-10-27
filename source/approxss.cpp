@@ -505,21 +505,34 @@ namespace PintoolOutput {
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
 
+		std::array<uint64_t, AccessTypes::Size> totalTargetAccessesBytes;
+		std::fill_n(totalTargetAccessesBytes.data(), AccessTypes::Size, 0);
+
 		for (const auto& [_, approxBuffer] : g_generalBuffers) { 
-			approxBuffer->WriteAccessLogToFile(g_accessOutputLog, totalTargetInjections);
+			approxBuffer->WriteAccessLogToFile(g_accessOutputLog, totalTargetAccessesBytes, totalTargetInjections);
 		}
+
+		uint64_t totalAccesses = 0;
+		g_accessOutputLog << std::endl;
+		for (size_t i = 0; i < AccessTypes::Size; ++i) {
+			g_accessOutputLog << "Total Software Implementation " << AccessTypesNames[i] << " Bytes/Bits: " << totalTargetAccessesBytes[i] << " / " << (totalTargetAccessesBytes[i] * BYTE_SIZE) << std::endl;
+			totalAccesses += totalTargetAccessesBytes[i];
+		}
+		g_accessOutputLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
 
 		#if LOG_FAULTS
 			uint64_t totalInjections = 0;
+			g_accessOutputLog << std::endl;
+
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 				std::string errorCat = ErrorCategoryNames[i];
 				StringHandling::toLower(errorCat);
 
-				g_accessOutputLog << "Total " << errorCat <<" errors injected: " << totalTargetInjections[i] << std::endl;
+				g_accessOutputLog << "Total " << errorCat << " Errors Injected: " << totalTargetInjections[i] << std::endl;
 				totalInjections += totalTargetInjections[i];
 			}
 
-			g_accessOutputLog << "Total errors injected: " << (totalInjections) << std::endl;
+			g_accessOutputLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
 		
 		g_accessOutputLog.close();
