@@ -23,17 +23,20 @@ extern uint64_t g_injectionCalls;
 
 class FaultInjector : public InjectorConfiguration {
 	protected: 
-		static std::uniform_real_distribution<double> m_occurrenceDistribution;
-	
-	public:
-		static constexpr uint8_t m_bitMask = 0x01;		
-		static std::default_random_engine m_generator;
+		static std::uniform_real_distribution<double> occurrenceDistribution;
+		static constexpr uint8_t bitMask = 0x01;		
+		static std::default_random_engine generator;
 
+	public:
 		FaultInjector(const InjectorConfiguration& injectorCfg);
 
-		void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+		#if !MULTIPLE_BER_ELEMENT
+			void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+		#else
+			void InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+		#endif
 
-		#if ENABLE_PASSIVE_INJECTION && OVERCHARGE_FLIP_BACK
+		#if OVERCHARGE_FLIP_BACK
 			void InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER);
 		#endif
 };
@@ -47,7 +50,7 @@ class GranularFaultInjector : public FaultInjector {
 
 		void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
 
-		#if ENABLE_PASSIVE_INJECTION && OVERCHARGE_FLIP_BACK
+		#if OVERCHARGE_FLIP_BACK
 			void InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER);
 		#endif
 };
@@ -72,7 +75,7 @@ class GranularFaultInjector : public FaultInjector {
 		protected:
 			const size_t m_dataSizeInBytes;
 
-			#if MULTIPLE_BERS
+			#if MULTIPLE_BER_CONFIGURATION
 				std::array<DistanceBasedInjectorRecord*,					ErrorCategory::Size> m_record;
 
 				std::array<std::unique_ptr<DistanceBasedInjectorRecord[]>, 	ErrorCategory::Size> m_recordArray;
@@ -82,7 +85,7 @@ class GranularFaultInjector : public FaultInjector {
 			#endif
 
 		public:
-			#if MULTIPLE_BERS
+			#if MULTIPLE_BER_CONFIGURATION
 				void ReviseRecord(const size_t errorCat);
 
 				void AdvanceBerIndex(); 

@@ -1,34 +1,60 @@
 #include "fault-injector.h"
 
-std::default_random_engine FaultInjector::m_generator{std::random_device{}()};
-std::uniform_real_distribution<double> FaultInjector::m_occurrenceDistribution{0.0f, 1.0f};
+std::default_random_engine FaultInjector::generator{std::random_device{}()};
+std::uniform_real_distribution<double> FaultInjector::occurrenceDistribution{0.0f, 1.0f};
 
 FaultInjector::FaultInjector(const InjectorConfiguration& injectorCfg) : InjectorConfiguration(injectorCfg) {}
 
-void FaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
-	++g_injectionCalls;
-	bool isFaultInjected = false;
-	
-	for (size_t bitCount = 0; bitCount < this->GetBitDepth(); ++bitCount) {
-		const double randomProbability = FaultInjector::m_occurrenceDistribution(FaultInjector::m_generator);
 
-		if (randomProbability < ber) {
-			if (toBackup && !isFaultInjected) {
-				toBackup->BackupReadData(data);
-				isFaultInjected = true;
+#if !MULTIPLE_BER_ELEMENT
+	void FaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+		++g_injectionCalls;
+		bool isFaultInjected = false;
+		
+		for (size_t bitCount = 0; bitCount < this->GetBitDepth(); ++bitCount) {
+			const double randomProbability = FaultInjector::occurrenceDistribution(FaultInjector::generator);
+
+			if (randomProbability < ber) {
+				if (toBackup && !isFaultInjected) {
+					toBackup->BackupReadData(data);
+					isFaultInjected = true;
+				}
+
+				const uint8_t faultMask = FaultInjector::bitMask << (bitCount % BYTE_SIZE);
+				data[bitCount/BYTE_SIZE] ^= faultMask;
+
+				#if LOG_FAULTS
+					++injectedByBit[bitCount];
+				#endif
 			}
-
-			const uint8_t faultMask = FaultInjector::m_bitMask << (bitCount % BYTE_SIZE);
-			data[bitCount/BYTE_SIZE] ^= faultMask;
-
-			#if LOG_FAULTS
-				++injectedByBit[bitCount];
-			#endif
 		}
 	}
-}
+#else
+	void FaultInjector::InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+		++g_injectionCalls;
+		bool isFaultInjected = false;
+		
+		for (size_t bitCount = 0; bitCount < this->GetBitDepth(); ++bitCount) {
+			const double randomProbability = FaultInjector::occurrenceDistribution(FaultInjector::generator);
 
-#if ENABLE_PASSIVE_INJECTION && OVERCHARGE_FLIP_BACK
+			if (randomProbability < ber[bitCount]) {
+				if (toBackup && !isFaultInjected) {
+					toBackup->BackupReadData(data);
+					isFaultInjected = true;
+				}
+
+				const uint8_t faultMask = FaultInjector::bitMask << (bitCount % BYTE_SIZE);
+				data[bitCount/BYTE_SIZE] ^= faultMask;
+
+				#if LOG_FAULTS
+					++injectedByBit[bitCount];
+				#endif
+			}
+		}
+	}
+#endif
+
+#if OVERCHARGE_FLIP_BACK
 	void FaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER) {
 		++g_injectionCalls;
 
@@ -67,11 +93,11 @@ GranularFaultInjector::GranularFaultInjector(const InjectorConfiguration& inject
 
 void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
 	++g_injectionCalls;	
-	const double randomProbability = m_occurrenceDistribution(FaultInjector::m_generator);
+	const double randomProbability = occurrenceDistribution(FaultInjector::generator);
 
 	if (randomProbability < (ber * static_cast<double>(this->GetBitDepth()))) {
-		const size_t instanceIndex = this->m_instanceDistribution(FaultInjector::m_generator);
-		const uint8_t faultMask = FaultInjector::m_bitMask << (instanceIndex % BYTE_SIZE);
+		const size_t instanceIndex = this->m_instanceDistribution(FaultInjector::generator);
+		const uint8_t faultMask = FaultInjector::bitMask << (instanceIndex % BYTE_SIZE);
 
 		if (toBackup) {
 			toBackup->BackupReadData(data);
@@ -85,13 +111,13 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	}
 }
 
-#if ENABLE_PASSIVE_INJECTION && OVERCHARGE_FLIP_BACK
+#if OVERCHARGE_FLIP_BACK
 	void GranularFaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER) {
 		++g_injectionCalls;
 
 		for (/**/; ber * static_cast<double>(this->GetBitDepth()) > 1; --ber) {
-			const size_t instanceIndex = m_instanceDistribution(FaultInjector::m_generator);
-			const uint8_t faultMask = FaultInjector::m_bitMask << (instanceIndex % BYTE_SIZE);
+			const size_t instanceIndex = m_instanceDistribution(FaultInjector::generator);
+			const uint8_t faultMask = FaultInjector::bitMask << (instanceIndex % BYTE_SIZE);
 
 			data[instanceIndex/BYTE_SIZE] ^= faultMask;
 
@@ -118,7 +144,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	}
 
 	int64_t DistanceBasedInjectorRecord::GenerateNewNextErrorDistance() {
-		return static_cast<int64_t>(std::abs(this->m_errorDistanceDistribution(FaultInjector::m_generator)));
+		return static_cast<int64_t>(std::abs(this->m_errorDistanceDistribution(FaultInjector::generator)));
 	}
 
 	bool DistanceBasedInjectorRecord::IsEnabled() const {
@@ -133,7 +159,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	}
 
 	DistanceBasedFaultInjector::DistanceBasedFaultInjector(const InjectorConfiguration& injectorCfg, const size_t dataSizeInBytes) : FaultInjector(injectorCfg) , m_dataSizeInBytes(dataSizeInBytes) {
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 				this->m_recordArray[i] = std::unique_ptr<DistanceBasedInjectorRecord[]>((DistanceBasedInjectorRecord*) std::malloc(sizeof(DistanceBasedInjectorRecord) * injectorCfg.GetBerCount(i)));
 
@@ -150,7 +176,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		#endif
 	};
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		void DistanceBasedFaultInjector::AdvanceBerIndex() {
 			this->ReviseRecords();
 		}
@@ -186,7 +212,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	#endif
 
 	DistanceBasedInjectorRecord* DistanceBasedFaultInjector::GetInjectorRecord(const size_t errorCat) {
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			return this->m_record[errorCat];
 		#else
 			return &this->m_record[errorCat];
@@ -211,7 +237,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 
 			const size_t injectionBit = injectorRecord.m_injectionBit;
 
-			data[injectionBit/BYTE_SIZE] ^= (FaultInjector::m_bitMask << (injectionBit % BYTE_SIZE));
+			data[injectionBit/BYTE_SIZE] ^= (FaultInjector::bitMask << (injectionBit % BYTE_SIZE));
 
 			#if LOG_FAULTS
 				++injectedByBit[injectionBit];

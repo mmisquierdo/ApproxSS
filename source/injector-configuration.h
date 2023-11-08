@@ -15,16 +15,24 @@ extern uint64_t g_currentPeriod;
 #if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
 	typedef std::pair<double, double> ErrorType; //<mean, std-dev>
 #else
-	typedef double ErrorType;
+	#if MULTIPLE_BER_ELEMENT
+		typedef double* ErrorType;
+	#else
+		typedef double ErrorType;
+	#endif
 #endif
 
-#if MULTIPLE_BERS
+#if MULTIPLE_BER_CONFIGURATION
 	class MultiBer {
 		public:
 			std::unique_ptr<ErrorType[]> values;
 			size_t count;
 
 		MultiBer();
+
+		#if MULTIPLE_BER_ELEMENT
+			~MultiBer();
+		#endif
 	};
 #endif
 
@@ -36,7 +44,7 @@ class InjectorConfiguration {
 		std::array<ErrorType, ErrorCategory::Size> m_bers;
 		std::array<bool, ErrorCategory::Size> m_shouldGoOn;
 
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			std::shared_ptr<std::array<MultiBer, ErrorCategory::Size>> m_bersArray;
 			uint64_t m_creationPeriod;
 		#endif
@@ -59,12 +67,13 @@ class InjectorConfiguration {
 
 		void ReviseShouldGoOn(const size_t errorCat);
 
-		static std::string SingleBerToString(const std::pair<double, double>& ber);
-		static std::string SingleBerToString(const double ber);
+		std::string SingleBerToString(double const * const ber) const;
+		std::string SingleBerToString(const std::pair<double, double>& ber) const;
+		std::string SingleBerToString(const size_t errorCat) const;
 
 		std::string toString(const std::string& lineStart = "") const;
 
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			InjectorConfiguration(const InjectorConfiguration& other);
 
 			uint64_t GetBerCurrentIndex(const size_t errorCat) const;
@@ -83,7 +92,7 @@ class InjectorConfiguration {
 
 			void ReviseBer(const size_t errorCat);
 
-			static std::string MultipleBersToString(const MultiBer& ber);
+			const std::string MultipleBersToString(const size_t errorCat);
 			InjectorConfiguration& operator=(const InjectorConfiguration& other);
 		#endif
 

@@ -15,7 +15,7 @@ PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 		}
 	#endif
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_berIndex[i] = other.m_berIndex[i];
 		}
@@ -42,7 +42,7 @@ void PeriodLog::ResetCounts(const uint64_t period, const InjectorConfiguration &
 		}
 	#endif
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_berIndex[i] = injectorCfg.GetBerCurrentIndex(i);
 		}
@@ -61,7 +61,7 @@ bool PeriodLog::IsVirgin() const {
 void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::string &basePadding /*= ""*/) const {
 	for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 		outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " <<
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			this->m_berIndex[i]
 		#else
 			0
@@ -124,7 +124,7 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 	const bool NaN = (consumptionTypeIndex == ConsumptionType::Reference) && (!respectiveConsumptionProfile.HasReferenceValues());
 
 	if (!NaN) {
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			const size_t tempBerIndex = this->m_berIndex[errorCat];
 		#else
 			const size_t tempBerIndex = 0;

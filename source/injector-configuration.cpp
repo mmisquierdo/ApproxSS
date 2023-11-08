@@ -1,19 +1,27 @@
 #include "injector-configuration.h"
 
 
-#if MULTIPLE_BERS
+#if MULTIPLE_BER_CONFIGURATION
 	MultiBer::MultiBer() {
 		this->values = std::unique_ptr<ErrorType[]>((ErrorType*) std::malloc(sizeof(ErrorType)));
 		this->values[0] = InjectorConfiguration::GetZeroBerValue();
 		this->count = 1;
 	}
+
+	#if MULTIPLE_BER_ELEMENT
+		MultiBer::~MultiBer() {
+			for (size_t i = 0; i < this->count; ++i) {
+				delete[] this->values[i];
+			}
+		}
+	#else
 #endif
 
 InjectorConfiguration::InjectorConfiguration() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		this->m_creationPeriod = g_currentPeriod;
 
 		this->m_bersArray = std::shared_ptr<std::array<MultiBer, ErrorCategory::Size>>((std::array<MultiBer, ErrorCategory::Size>*) std::malloc(sizeof(std::array<MultiBer, ErrorCategory::Size>)));
@@ -50,7 +58,7 @@ void InjectorConfiguration::SetConfigurationId(const int64_t id) {
 	this->m_configurationId = id;
 }
 
-#if MULTIPLE_BERS
+#if MULTIPLE_BER_CONFIGURATION
 	void InjectorConfiguration::AdvanceBerIndex() {
 		this->ReviseBers();
 	}
@@ -104,10 +112,10 @@ void InjectorConfiguration::SetConfigurationId(const int64_t id) {
 		return period - this->GetCreationPeriod();
 	}
 
-	std::string InjectorConfiguration::MultipleBersToString(const MultiBer& ber) {
+	std::string InjectorConfiguration::MultipleBersToString(const size_t errorCat) {
 		std::stringstream s;
-		for (size_t i = 0; i < ber.count; ++i) {
-			s << " " << InjectorConfiguration::SingleBerToString(ber.values[i]);
+		for (size_t i = 0; i < this->GetBerCount(errorCat); ++i) {
+			s << " " << InjectorConfiguration::SingleBerToString(this->GetBer(errorCat, i));
 		}
 
 		return s.str();
@@ -133,7 +141,7 @@ void InjectorConfiguration::SetConfigurationId(const int64_t id) {
 #if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
 	double InjectorConfiguration::GetBer(const size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const {
 		const uint64_t markerDif = currentIndex - pastIndex;
-		#if MULTIPLE_BERSs
+		#if MULTIPLE_BER_CONFIGURATION
 			if (this->GetBerCount(errorCat) == 1) {
 				return this->GetBer(errorCat) * static_cast<double>(markerDif);
 			}
@@ -177,7 +185,7 @@ bool InjectorConfiguration::ShouldGoOn(const double ber) {
 }
 
 void InjectorConfiguration::ReviseShouldGoOn(const size_t errorCat) {
-	#if MULTIPLE_BERS && ENABLE_PASSIVE_INJECTION
+	#if MULTIPLE_BER_CONFIGURATION && ENABLE_PASSIVE_INJECTION
 		//this->m_shouldGoOn[errorCat] = (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
 		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
 	#else
@@ -191,6 +199,11 @@ bool InjectorConfiguration::GetShouldGoOn(const size_t errorCat) const {
 
 ErrorType InjectorConfiguration::GetBer(const size_t errorCat) const{
 	return this->m_bers[errorCat];
+}
+
+std::string InjectorConfiguration::SingleBerToString(double const * const ber) {
+	for (size_t i = 0; ) //TODO: continuar
+	return std::to_string(ber.first) + " " + std::to_string(ber.second) + ";"; 
 }
 
 std::string InjectorConfiguration::SingleBerToString(const std::pair<double, double>& ber) {
@@ -208,10 +221,10 @@ std::string InjectorConfiguration::toString(const std::string& lineStart /*= ""*
 
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		s += lineStart + ErrorCategoryNames[errorCat] + "Ber: " +
-		#if MULTIPLE_BERS
-			InjectorConfiguration::MultipleBersToString((*this->m_bersArray)[errorCat])
+		#if MULTIPLE_BER_CONFIGURATION
+			InjectorConfiguration::MultipleBersToString(errorCat)
 		#else
-			InjectorConfiguration::SingleBerToString(this->m_bers[errorCat])
+			InjectorConfiguration::SingleBerToString(errorCat)
 		#endif
 		+ "\n";
 	}

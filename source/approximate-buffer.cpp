@@ -5,7 +5,7 @@ namespace BorrowedMemory {
 		InjectionRecordPool g_injectionRecords;
 		ReadBackupsPool g_readBackups;
 
-		#if MULTIPLE_BERS || LOG_FAULTS
+		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			WriteSupportRecordPool g_writeSupportRecordPool;
 		#endif
 	//#endif
@@ -97,7 +97,7 @@ ApproximateBuffer::~ApproximateBuffer() {
 }
 
 void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.ResetBerIndex(creationPeriod);
 	#endif
 
@@ -129,7 +129,7 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 
 	this->StoreCurrentPeriodLog();
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.AdvanceBerIndex();
 	#endif
 
@@ -275,13 +275,13 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 				for (/**/; initialMarker < currentMarker; ++initialMarker, this->AdvanceBufferLogIterator(it)) {
 					uint64_t* const passiveErrorCount = this->GetPassiveErrorsLogFromIterator(it);
 
-					#if MULTIPLE_BERS
+					#if MULTIPLE_BER_CONFIGURATION
 						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, this->m_faultInjector.GetBerIndexFromPeriod(initialMarker));
 					#else
 						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive);
 					#endif
 
-					if (ber || !MULTIPLE_BERS) { //if MULTIPLE_BERS is false, the check is optimized away
+					if (ber || !MULTIPLE_BER_CONFIGURATION) { //if MULTIPLE_BER_CONFIGURATION is false, the check is optimized away
 						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, passiveErrorCount);
 					}
 				}
@@ -289,7 +289,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
 				if (currentMarker > initialMarker) {
 					const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, initialMarker, currentMarker);
-					if (ber || !MULTIPLE_BERS) {
+					if (ber || !MULTIPLE_BER_CONFIGURATION) {
 						#if OVERCHARGE_FLIP_BACK
 							this->m_faultInjector.InjectFaultOvercharged(accessedAddress, ber);
 						#else
@@ -414,7 +414,7 @@ void ShortTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 }
 
 uint8_t* ShortTermApproximateBuffer::GetWriteAddressFromIterator(const PendingWrites::const_iterator& it) {
-	#if !MULTIPLE_BERS && !LOG_FAULTS
+	#if !MULTIPLE_BER_CONFIGURATION && !LOG_FAULTS
 		return *it;
 	#else
 		return it->first;
@@ -422,7 +422,7 @@ uint8_t* ShortTermApproximateBuffer::GetWriteAddressFromIterator(const PendingWr
 }
 
 auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::const_iterator& it) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		#if LOG_FAULTS
 			return it->second.first;
 		#else
@@ -439,7 +439,7 @@ auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::co
 
 #if LOG_FAULTS
 	uint64_t* ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(const PendingWrites::const_iterator& it) {
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			return it->second.second;
 		#else
 			return it->second;
@@ -469,7 +469,7 @@ void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const accessedAddres
 
 void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 	PendingWrites::const_iterator lowerIt = this->m_pendingWrites.lower_bound(initialAddress);
-	#if MULTIPLE_BERS || LOG_FAULTS
+	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 		while (lowerIt != this->m_pendingWrites.cend() && lowerIt->first	< finalAddress)
 	#else
 		while (lowerIt != this->m_pendingWrites.cend() && *lowerIt			< finalAddress)
@@ -486,7 +486,7 @@ void ShortTermApproximateBuffer::ApplyAllWriteErrors() {
 }
 
 void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, PendingWrites::const_iterator& hint) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		#if LOG_FAULTS
 			#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
 				std::pair<double, uint64_t*> insertedValue = std::make_pair(this->m_faultInjector.GetBer(ErrorCategory::Write), this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Write));
@@ -700,7 +700,7 @@ void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t perio
 		this->m_readBackups = std::unique_ptr<uint8_t[]>((uint8_t*) std::malloc(this->GetTotalNecessaryReadBackupSize()));
 	}
 
-	#if MULTIPLE_BERS || LOG_FAULTS
+	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 		const WriteSupportRecordPool::iterator writeIt = g_writeSupportRecordPool.find(this->GetNumberOfElements());
 		if (writeIt != g_writeSupportRecordPool.cend()) {
 			this->m_writeSupportRecords = std::unique_ptr<WriteSupportRecord[]>(writeIt->second.release());
@@ -718,7 +718,7 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 		BorrowedMemory::g_injectionRecords.insert({this->GetNumberOfElements(), std::unique_ptr<InjectionRecord[]>(this->m_records.release())});
 		BorrowedMemory::g_readBackups.insert({this->GetTotalNecessaryReadBackupSize(), std::unique_ptr<uint8_t[]>(this->m_readBackups.release())});
 
-		#if MULTIPLE_BERS || LOG_FAULTS
+		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			BorrowedMemory::g_writeSupportRecordPool.insert({this->GetNumberOfElements(), std::unique_ptr<WriteSupportRecord[]>(this->m_writeSupportRecords.release())});
 		#endif
 
@@ -730,7 +730,7 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 		this->m_records.reset();
 		this->m_readBackups.reset();
 
-		#if MULTIPLE_BERS || LOG_FAULTS
+		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			this->m_writeSupportRecords.reset();
 		#endif
 
@@ -767,7 +767,7 @@ void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 }
 
 void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
 			this->m_writeSupportRecords[elementIndex].writeSupport = this->m_faultInjector.GetBer(ErrorCategory::Write);
 		#else
@@ -791,13 +791,13 @@ void LongTermApproximateBuffer::ReverseFaultyRead(const size_t elementIndex, uin
 
 auto LongTermApproximateBuffer::GetWriteBer(const size_t elementIndex) {
 	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-		#if MULTIPLE_BERS 
+		#if MULTIPLE_BER_CONFIGURATION 
 			return this->m_writeSupportRecords[elementIndex].writeSupport;
 		#else
 			return this->m_faultInjector.GetBer(ErrorCategory::Write);
 		#endif
 	#else
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			return this->m_writeSupportRecords[elementIndex].writeSupport;
 		#else
 			return this->m_faultInjector.GetInjectorRecord(ErrorCategory::Write);
@@ -844,7 +844,7 @@ void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t element
 		this->UpdateLastAccessPeriod(elementIndex);
 	#endif
 
-	#if MULTIPLE_BERS || LOG_FAULTS
+	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 		if (shouldInject) {
 			this->RecordFaultyWrite(elementIndex);
 		}

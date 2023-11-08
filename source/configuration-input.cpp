@@ -139,7 +139,7 @@ void PintoolInput::ProcessConsumptionValue(const std::string& value, const size_
 }
 
 void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectorConfiguration& injectorCfg, const size_t errorCat) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		injectorCfg.SetBerCount(errorCat, PintoolInput::CountSemicolon(values, lineCount));
 
 		std::string nextValues = values;
@@ -184,7 +184,7 @@ void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string
 }
 
 void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectorConfiguration& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		const size_t semiColonCount = PintoolInput::CountSemicolon(values, lineCount);
 		if (semiColonCount != respectiveInjectorCfg.GetBerCount(errorCat)) {
 			std::cout << "Pintool Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 

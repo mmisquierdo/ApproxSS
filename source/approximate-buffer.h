@@ -155,7 +155,7 @@ class ApproximateBuffer {
 
 typedef std::map<uint8_t* const, uint8_t*> RemainingReads;
 
-#if MULTIPLE_BERS
+#if MULTIPLE_BER_CONFIGURATION
 	#if LOG_FAULTS
 		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
 			typedef std::map<uint8_t* const, std::pair<double, uint64_t*>>							PendingWrites;
@@ -238,10 +238,10 @@ class InjectionRecord {
 	}
 };
 
-#if MULTIPLE_BERS || LOG_FAULTS
+#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 	class WriteSupportRecord {
 		public:
-			#if MULTIPLE_BERS
+			#if MULTIPLE_BER_CONFIGURATION
 				#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
 					double writeSupport;
 				#else
@@ -263,7 +263,7 @@ namespace BorrowedMemory {
 		extern InjectionRecordPool g_injectionRecords;
 		extern ReadBackupsPool g_readBackups;
 
-		#if MULTIPLE_BERS || LOG_FAULTS
+		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			typedef std::unordered_multimap<size_t, std::unique_ptr<WriteSupportRecord[]>> WriteSupportRecordPool;
 			extern WriteSupportRecordPool g_writeSupportRecordPool;
 		#endif
@@ -280,7 +280,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		std::unique_ptr<InjectionRecord[]> m_records;
 		std::unique_ptr<uint8_t[]> m_readBackups;
 
-		#if MULTIPLE_BERS || LOG_FAULTS
+		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			std::unique_ptr<WriteSupportRecord[]> m_writeSupportRecords;
 		#endif
 

@@ -41,7 +41,7 @@ In order to try to reduce as much as possible the overhead imposed by using Appr
 
 1. MULTIPLE_ACTIVE_BUFFERS: When enabled, allows ApproxSS to keep multiple approximate buffers active simultaneously. Deactivating this flag simplifies the verification and reduces the overhead. 
 
-2. MULTIPLE_BERS: When enabled, allows every injector configuration to have multiple BERs per error category. The exchange between them is performed by the _next_period()_ instrumentation marker, which advances the BER indices.
+2. MULTIPLE_BER_CONFIGURATION: When enabled, allows every injector configuration to have multiple BERs per error category. The exchange between them is performed by the _next_period()_ instrumentation marker, which advances the BER indices.
 
 3. LOG_FAULTS: When enabled, allows bit-level accounting error injected per category and period. Can be activated as a debugging measure or for other purposes. Writes that are overwritten before being read are not injected and, therefore, are not accounted.
 
@@ -93,10 +93,10 @@ Retiring an approximate buffer implies reversing residual read errors and applyi
 void next_period();
 ```
 
-The _next_period()_ function increments the period marker. Periods are separations in the approximate buffer records and control the BERs in use by the error injectors (if MULTIPLE_BERS is active), allowing a more detailed view on the behavior of the target application and, possibly, also a greater control over the error injection by ApproxSS. 
+The _next_period()_ function increments the period marker. Periods are separations in the approximate buffer records and control the BERs in use by the error injectors (if MULTIPLE_BER_CONFIGURATION is active), allowing a more detailed view on the behavior of the target application and, possibly, also a greater control over the error injection by ApproxSS. 
 
 The approximate buffer registers store read and write counters.
-If the LOG_FAULTS flag was active during ApproxSS compilation, the log also stores bit-by-bit counters of reading, writing errors. And, in the case of the MULTIPLE_BERS flag, it also stores the indexes of the BERs, to allow the future calculation of energy consumption. By incrementing the period marker, current period log data is stored, counters are reset, and BER indexes are advanced.
+If the LOG_FAULTS flag was active during ApproxSS compilation, the log also stores bit-by-bit counters of reading, writing errors. And, in the case of the MULTIPLE_BER_CONFIGURATION flag, it also stores the indexes of the BERs, to allow the future calculation of energy consumption. By incrementing the period marker, current period log data is stored, counters are reset, and BER indexes are advanced.
 
 The separations caused by periods can be useful to obtain individual measurements of accesses and facilitate several levels of approximation for each frame of a video, block of an image, epoch of training of meeting networks, etc. For example, in the inter-frame prediction step of video encoders, several neighboring frames are used as a reference. Different levels of approximation could be used as these frames of reference move away from the one to be predicted, if taking advantage of the reduced potential influence.
 
@@ -197,7 +197,7 @@ PassiveBer: ({x ∈ double | 0.0 ≤ x < 1.0};)1|+
 ADD_BUFFER)1|+
 ```
 
-The configuration starts with the _ConfigurationId_, which serves as the configuration identifier and can be any value representable by a signed 64-bit integer (int64_t). Followed by _BitDepth_, the bit length that limits up to which bit of the accessed memory element the error injection can be performed, and can be any value above 0 representable by an unsigned 64-bit integer (size_t). However, trying to use an injector configuration with an approximate buffer whose stored indidivual element size is less than the _BitDepth_ will result in an exception being raised, interrupting the execution of both Pin and target application. _ReadBer_, _WriteBer_, and _PassiveBer_ determine the read, write, and passive BERs, respectively. They are 64-bit (double) floating point numbers, must be in the range [0,0, 1,0) and have a semicolon (;) at the end. If the MULTIPLE_BERS flag was active during the ApproxSS compilation,  _ReadBer_, _WriteBer_, and _PassiveBer_ can have several BER values. If DISTANCE_BASED_FAULT_INJECTOR is enabled, instead of the rates, BERs must be the mean and standard deviation of the distance between errors.
+The configuration starts with the _ConfigurationId_, which serves as the configuration identifier and can be any value representable by a signed 64-bit integer (int64_t). Followed by _BitDepth_, the bit length that limits up to which bit of the accessed memory element the error injection can be performed, and can be any value above 0 representable by an unsigned 64-bit integer (size_t). However, trying to use an injector configuration with an approximate buffer whose stored indidivual element size is less than the _BitDepth_ will result in an exception being raised, interrupting the execution of both Pin and target application. _ReadBer_, _WriteBer_, and _PassiveBer_ determine the read, write, and passive BERs, respectively. They are 64-bit (double) floating point numbers, must be in the range [0,0, 1,0) and have a semicolon (;) at the end. If the MULTIPLE_BER_CONFIGURATION flag was active during the ApproxSS compilation,  _ReadBer_, _WriteBer_, and _PassiveBer_ can have several BER values. If DISTANCE_BASED_FAULT_INJECTOR is enabled, instead of the rates, BERs must be the mean and standard deviation of the distance between errors.
 _PassiveBer_ is optional when ENABLE_PASSIVE_INJECTION is _false_, ending up ignored. And finally, ADD_BUFFER signals the end of the configuration in question. Several injector configurations can be specified, as long as they have different _ConfigurationIds_. If any are repeated, their configuration will be ignored and will not be added.
 
 ```
@@ -237,7 +237,7 @@ ADD_BUFFER)1|+
 The configuration starts with the _ConfigurationId_, which serves as the configuration identifier to designate to which error injection configuration it corresponds, and can be any value representable by a signed 64-bit integer (int64_t). 
 Every energy consumption profile must have a respective error injection configuration and vice versa.
 _ReadConsumption_, _WriteConsumption_, and _PassiveConsumption_ determine the read, write, and passive energy consumptions, respectively, measure in picojoules (pJ) per byte. 
-They are 64-bit (double) floating point numbers, must be positive and have a semicolon (;) at the end. If the MULTIPLE_BERS flag was active during the ApproxSS compilation,_ReadConsumption_, _WriteConsumption_, and _PassiveConsumption_ can have several values and MUST be the same amount as their error injection counterparts.
+They are 64-bit (double) floating point numbers, must be positive and have a semicolon (;) at the end. If the MULTIPLE_BER_CONFIGURATION flag was active during the ApproxSS compilation,_ReadConsumption_, _WriteConsumption_, and _PassiveConsumption_ can have several values and MUST be the same amount as their error injection counterparts.
 _PassiveConsumption_ is optional when ENABLE_PASSIVE_INJECTION is _false_, ending up ignored. 
 And finally, END_PROFILE signals the end of the profile in question.
 

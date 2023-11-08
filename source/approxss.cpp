@@ -460,7 +460,7 @@ namespace PintoolOutput {
 
 		PintoolOutput::PrintEnabledOrDisabled("Passive Injection", ENABLE_PASSIVE_INJECTION);
 		PintoolOutput::PrintEnabledOrDisabled("Multiple Active Buffers", MULTIPLE_ACTIVE_BUFFERS);
-		PintoolOutput::PrintEnabledOrDisabled("Multiple BERs", MULTIPLE_BERS);
+		PintoolOutput::PrintEnabledOrDisabled("Multiple BERs", MULTIPLE_BER_CONFIGURATION);
 		PintoolOutput::PrintEnabledOrDisabled("Fault Logging", LOG_FAULTS);
 		PintoolOutput::PrintEnabledOrDisabled("Narrow Access Instrumentation", NARROW_ACCESS_INSTRUMENTATION);
 		PintoolOutput::PrintEnabledOrDisabled("Overload flip-back", OVERCHARGE_FLIP_BACK);

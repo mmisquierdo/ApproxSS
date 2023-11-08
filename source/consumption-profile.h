@@ -18,7 +18,7 @@ class ConsumptionProfile {
 	const int64_t m_configurationId;
 	bool m_hasReferenceValues;
 
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		std::array<std::array<std::unique_ptr<double[]>, 	ErrorCategory::Size>, ConsumptionType::Size> m_consumptionValues; //C++ é verboso, mas eu posso estar exagerando...
 		std::array<size_t, ErrorCategory::Size> m_consumptionValuesCount;
 	#else
@@ -35,7 +35,7 @@ class ConsumptionProfile {
 
 		double EstimateEnergyConsumption(const size_t processedBytes, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t berIndex = 0) const;
 
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			void SetConsumptionValue(const size_t consumptionType, const size_t errorCat, const size_t index, const double consumptionValue);
 			void SetConsumptionValueCount(const size_t consumptionType, const size_t errorCat, const size_t count);
 		#else

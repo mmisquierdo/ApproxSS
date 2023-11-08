@@ -23,7 +23,7 @@ class PeriodLog {
 			void WriteAndSumIndividualInjectionArray(std::ofstream& outputLog, const std::string errorType, const size_t bitDepth, uint64_t& bufferTotalInjected, uint64_t const * const injectedByBit, const std::string& basePadding = "") const;
 		#endif
 
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			std::array<size_t, ErrorCategory::Size> m_berIndex;
 		#endif
 

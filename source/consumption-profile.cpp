@@ -18,7 +18,7 @@ void ConsumptionProfile::StringfyConsumptionValues(std::string& s, const std::st
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		s += lineStart + ErrorCategoryNames[errorCat] + "Consumption:";
 
-		#if MULTIPLE_BERS
+		#if MULTIPLE_BER_CONFIGURATION
 			for (size_t valueIndex = 0; valueIndex < this->m_consumptionValuesCount[errorCat]; ++valueIndex) {
 				s += " " + std::to_string(this->m_consumptionValues[consumptionType][errorCat][valueIndex]) + "pJ;";
 			}
@@ -51,7 +51,7 @@ std::string ConsumptionProfile::toString(const std::string& lineStart /*= ""*/) 
 double ConsumptionProfile::EstimateEnergyConsumption(const size_t softwareProcessedBytes, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t berIndex /*= 0*/) const {
 	const double proposedProcessedBytes = (static_cast<double>(softwareProcessedBytes) / static_cast<double>(dataSizeInBytes)) * (static_cast<double>(bitDepth)) / static_cast<double>(BYTE_SIZE);
 	
-	#if MULTIPLE_BERS
+	#if MULTIPLE_BER_CONFIGURATION
 		const double byteConsumptionValue = this->m_consumptionValues[consumptionTypeIndex][errorCat][berIndex];
 	#else
 		const double byteConsumptionValue = this->m_consumptionValues[consumptionTypeIndex][errorCat];
@@ -60,7 +60,7 @@ double ConsumptionProfile::EstimateEnergyConsumption(const size_t softwareProces
 	return proposedProcessedBytes * byteConsumptionValue;
 }
 
-#if MULTIPLE_BERS
+#if MULTIPLE_BER_CONFIGURATION
 	void ConsumptionProfile::SetConsumptionValue(const size_t consumptionType, const size_t errorCat, const size_t index, const double consumptionValue) {
 		this->m_consumptionValues[consumptionType][errorCat][index]	= consumptionValue;
 	}
