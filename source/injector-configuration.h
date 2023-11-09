@@ -64,12 +64,14 @@ class InjectorConfiguration {
 
 		static bool ShouldGoOn(const std::pair<double, double>& ber);
 		static bool ShouldGoOn(const double ber);
+		static bool ShouldGoOn(double const * const ber);
+		
 
 		void ReviseShouldGoOn(const size_t errorCat);
 
 		std::string SingleBerToString(double const * const ber) const;
 		std::string SingleBerToString(const std::pair<double, double>& ber) const;
-		std::string SingleBerToString(const size_t errorCat) const;
+		std::string SingleBerToString(const double ber) const;
 
 		std::string toString(const std::string& lineStart = "") const;
 
@@ -92,7 +94,7 @@ class InjectorConfiguration {
 
 			void ReviseBer(const size_t errorCat);
 
-			const std::string MultipleBersToString(const size_t errorCat);
+			std::string MultipleBersToString(const MultiBer& ber) const;
 			InjectorConfiguration& operator=(const InjectorConfiguration& other);
 		#endif
 

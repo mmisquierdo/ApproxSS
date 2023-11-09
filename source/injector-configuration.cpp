@@ -14,7 +14,7 @@
 				delete[] this->values[i];
 			}
 		}
-	#else
+	#endif
 #endif
 
 InjectorConfiguration::InjectorConfiguration() {
@@ -112,10 +112,10 @@ void InjectorConfiguration::SetConfigurationId(const int64_t id) {
 		return period - this->GetCreationPeriod();
 	}
 
-	std::string InjectorConfiguration::MultipleBersToString(const size_t errorCat) {
+	std::string InjectorConfiguration::MultipleBersToString(const MultiBer& ber) const {
 		std::stringstream s;
-		for (size_t i = 0; i < this->GetBerCount(errorCat); ++i) {
-			s << " " << InjectorConfiguration::SingleBerToString(this->GetBer(errorCat, i));
+		for (size_t i = 0; i < ber.count; ++i) {
+			s << " " << InjectorConfiguration::SingleBerToString(ber.values);
 		}
 
 		return s.str();
@@ -138,7 +138,7 @@ void InjectorConfiguration::SetConfigurationId(const int64_t id) {
 	}
 #endif
 
-#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR && !MULTIPLE_BER_ELEMENT
 	double InjectorConfiguration::GetBer(const size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const {
 		const uint64_t markerDif = currentIndex - pastIndex;
 		#if MULTIPLE_BER_CONFIGURATION
@@ -172,7 +172,11 @@ ErrorType InjectorConfiguration::GetZeroBerValue() {
 	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
 		return {0, 0};
 	#else
-		return 0;
+		#if MULTIPLE_BER_ELEMENT
+			return nullptr;
+		#else
+			return 0;
+		#endif
 	#endif
 }
 
@@ -182,6 +186,10 @@ bool InjectorConfiguration::ShouldGoOn(const std::pair<double, double>& ber) {
 
 bool InjectorConfiguration::ShouldGoOn(const double ber) {
 	return ber != 0;
+}
+
+bool InjectorConfiguration::ShouldGoOn(double const * const ber) {
+	return ber != nullptr;
 }
 
 void InjectorConfiguration::ReviseShouldGoOn(const size_t errorCat) {
@@ -201,16 +209,24 @@ ErrorType InjectorConfiguration::GetBer(const size_t errorCat) const{
 	return this->m_bers[errorCat];
 }
 
-std::string InjectorConfiguration::SingleBerToString(double const * const ber) {
-	for (size_t i = 0; ) //TODO: continuar
+std::string InjectorConfiguration::SingleBerToString(double const * const ber) const {
+	std::string s;
+	if (ber) {
+		for (size_t i = 0; i < (this->GetBitDepth() - 1); ++i) {
+			s += std::to_string(ber[i]);
+		}
+		s += std::to_string(ber[this->GetBitDepth()-1]);
+	} else {
+		return s += std::to_string(0.0);
+	}
+	return (s + ';'); 
+}
+
+std::string InjectorConfiguration::SingleBerToString(const std::pair<double, double>& ber) const {
 	return std::to_string(ber.first) + " " + std::to_string(ber.second) + ";"; 
 }
 
-std::string InjectorConfiguration::SingleBerToString(const std::pair<double, double>& ber) {
-	return std::to_string(ber.first) + " " + std::to_string(ber.second) + ";"; 
-}
-
-std::string InjectorConfiguration::SingleBerToString(const double ber) {
+std::string InjectorConfiguration::SingleBerToString(const double ber) const {
 	return std::to_string(ber) + ";"; 
 }
 
@@ -222,9 +238,9 @@ std::string InjectorConfiguration::toString(const std::string& lineStart /*= ""*
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		s += lineStart + ErrorCategoryNames[errorCat] + "Ber: " +
 		#if MULTIPLE_BER_CONFIGURATION
-			InjectorConfiguration::MultipleBersToString(errorCat)
+			InjectorConfiguration::MultipleBersToString((*this->m_bersArray)[errorCat])
 		#else
-			InjectorConfiguration::SingleBerToString(errorCat)
+			InjectorConfiguration::SingleBerToString(this->m_bers[errorCat])
 		#endif
 		+ "\n";
 	}
