@@ -77,12 +77,12 @@ namespace PintoolInput {
 
 	void ProcessBerConfiguration(const std::string& value, const size_t lineCount, std::pair<double, double>& toAtrib );
 	void ProcessBerConfiguration(const std::string& value, const size_t lineCount, double& toAtrib);
-	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectorConfiguration& injectorCfg, const size_t errorCat);
+	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationBorrower& injectorCfg, const size_t errorCat);
 
 	void ProcessConsumptionValue(const std::string& value, const size_t lineCount, double& toAtrib);
 
-	void ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectorConfiguration& respectiveInjectorCfg, const size_t consumptionType);
-	void ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectorConfiguration& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat);
+	void ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType);
+	void ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat);
 
 	void SeparateStringOn(const std::string& inputLine, const size_t lineCount, std::string& fistPart, std::string& secondPart, const char separator);
 

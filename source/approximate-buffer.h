@@ -104,7 +104,7 @@ class ApproximateBuffer {
 		void CleanLogs();
 	public:
 		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-						  const InjectorConfiguration& injectorCfg);
+						  const InjectionConfigurationBorrower& injectorCfg);
 
 		ApproximateBuffer(const ApproximateBuffer&) = delete;
 		ApproximateBuffer(const ApproximateBuffer&&) = delete;
@@ -205,7 +205,7 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 				
 	public:
 		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-									const InjectorConfiguration& injectorCfg);
+									const InjectionConfigurationBorrower& injectorCfg);
 		~ShortTermApproximateBuffer();
 
 		virtual void BackupReadData(uint8_t* const data);
@@ -302,7 +302,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 
 	public:
 		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-								const InjectorConfiguration& injectorCfg);
+								const InjectionConfigurationBorrower& injectorCfg);
 
 		LongTermApproximateBuffer(const LongTermApproximateBuffer&) = delete;
 		LongTermApproximateBuffer(const LongTermApproximateBuffer&&) = delete;

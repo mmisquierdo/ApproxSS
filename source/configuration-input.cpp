@@ -138,7 +138,7 @@ void PintoolInput::ProcessConsumptionValue(const std::string& value, const size_
 	} 
 }
 
-void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectorConfiguration& injectorCfg, const size_t errorCat) {
+void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationBorrower& injectorCfg, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
 		injectorCfg.SetBerCount(errorCat, PintoolInput::CountSemicolon(values, lineCount));
 
@@ -163,7 +163,7 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 	#endif
 }
 
-void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectorConfiguration& respectiveInjectorCfg, const size_t consumptionType) {
+void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType) {
 	std::string field, value;
 	
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
@@ -183,7 +183,7 @@ void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string
 	#endif
 }
 
-void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectorConfiguration& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
+void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
 		const size_t semiColonCount = PintoolInput::CountSemicolon(values, lineCount);
 		if (semiColonCount != respectiveInjectorCfg.GetBerCount(errorCat)) {
@@ -250,7 +250,7 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 	std::string line;
 	size_t lineCount = 0;
 
-	InjectorConfiguration* injectorCfg = new InjectorConfiguration();
+	InjectionConfigurationBorrower* injectorCfg = new InjectionConfigurationBorrower();
 
 	while (PintoolInput::GetNextValidLine(inputFile, line, lineCount)) {
 
@@ -258,13 +258,13 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 			const InjectorConfigurationMap::const_iterator lb = g_injectorConfigurations.lower_bound(injectorCfg->GetConfigurationId());
 
 			if (lb == g_injectorConfigurations.cend() || (g_injectorConfigurations.key_comp()(injectorCfg->GetConfigurationId(), lb->first))) {
-				g_injectorConfigurations.emplace_hint(lb, injectorCfg->GetConfigurationId(), std::unique_ptr<InjectorConfiguration>(injectorCfg));
+				g_injectorConfigurations.emplace_hint(lb, injectorCfg->GetConfigurationId(), std::unique_ptr<InjectionConfigurationBorrower>(injectorCfg));
 			} else {
 				std::cout << "Warning: ConfigurationId already specified. Discarding and ignoring it. Line " << lineCount << std::endl;
 				delete injectorCfg;
 			}
 
-			injectorCfg = new InjectorConfiguration();
+			injectorCfg = new InjectionConfigurationBorrower();
 			continue;
 		}
 
@@ -354,7 +354,7 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 			std::cout << "Pintool Error: respective injector configuration not specified. Found id: " << configurationId << "." << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
-		const InjectorConfiguration& respectiveInjectorCfg = *(injectorIt->second);
+		const InjectionConfigurationBorrower& respectiveInjectorCfg = *(injectorIt->second);
 
 		PintoolInput::GetNextValidLine(inputFile, line, lineCount);
 		const size_t readFieldCode = PintoolInput::AssertConsumptionFieldCode(line, ConsumptionFieldCode::NO_REFERENCE_VALUES | ConsumptionFieldCode::REFERENCE_VALUES, lineCount);

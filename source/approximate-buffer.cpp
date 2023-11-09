@@ -15,7 +15,7 @@ namespace BorrowedMemory {
 	#endif
 }
 
-ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectorConfiguration& injectorCfg) : 
+ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationBorrower& injectorCfg) : 
 	m_id(id),
 	m_bufferRange(bufferRange),
 	m_dataSizeInBytes(dataSizeInBytes),	
@@ -377,7 +377,7 @@ void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::arra
 /* ==================================================================== */
 
 ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-													const InjectorConfiguration& injectorCfg) : 
+													const InjectionConfigurationBorrower& injectorCfg) : 
 													ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg),
 													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cend())
 													{}
@@ -670,7 +670,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 /* ==================================================================== */
 
 LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-						  	const InjectorConfiguration& injectorCfg) : 
+						  	const InjectionConfigurationBorrower& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
 	
 	this->InitializeRecordsAndBackups(creationPeriod);
