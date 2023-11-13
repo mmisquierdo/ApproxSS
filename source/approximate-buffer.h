@@ -68,16 +68,16 @@ class ApproximateBuffer {
 		PeriodLog m_periodLog;
 		BufferLogs m_bufferLogs;
 
-		#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+		#if DISTANCE_BASED_FAULT_INJECTOR
 			DistanceBasedFaultInjector m_faultInjector;
-		#elif CHOSEN_FAULT_INJECTOR == GRANULAR_FAULT_INJECTOR
+		#elif GRANULAR_FAULT_INJECTOR
 			GranularFaultInjector m_faultInjector;
 		#else
 			FaultInjector m_faultInjector;
 		#endif
 
 		#if ENABLE_PASSIVE_INJECTION
-			#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+			#if !DISTANCE_BASED_FAULT_INJECTOR
 				std::unique_ptr<uint64_t[]> m_lastAccessPeriod;
 				void UpdateLastAccessPeriod(uint8_t const * const initialAddress, const uint32_t accessSize);
 				void UpdateLastAccessPeriod(uint8_t const * const accessedAddress);
@@ -104,7 +104,7 @@ class ApproximateBuffer {
 		void CleanLogs();
 	public:
 		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-						  const InjectionConfigurationBorrower& injectorCfg);
+						  const InjectionConfigurationLocal& injectorCfg);
 
 		ApproximateBuffer(const ApproximateBuffer&) = delete;
 		ApproximateBuffer(const ApproximateBuffer&&) = delete;
@@ -157,14 +157,22 @@ typedef std::map<uint8_t* const, uint8_t*> RemainingReads;
 
 #if MULTIPLE_BER_CONFIGURATION
 	#if LOG_FAULTS
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-			typedef std::map<uint8_t* const, std::pair<double, uint64_t*>>							PendingWrites;
+		#if !DISTANCE_BASED_FAULT_INJECTOR
+			#if MULTIPLE_BER_ELEMENT
+				typedef std::map<uint8_t* const, std::pair<double const *, uint64_t*>>				PendingWrites;
+			#else
+				typedef std::map<uint8_t* const, std::pair<double, uint64_t*>>						PendingWrites;
+			#endif
 		#else
 			typedef std::map<uint8_t* const, std::pair<DistanceBasedInjectorRecord*, uint64_t*>>	PendingWrites;
 		#endif
 	#else
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-			typedef std::map<uint8_t* const, double>												PendingWrites;
+		#if !DISTANCE_BASED_FAULT_INJECTOR
+			#if MULTIPLE_BER_ELEMENT
+				typedef std::map<uint8_t* const, double const *>									PendingWrites;
+			#else
+				typedef std::map<uint8_t* const, double>											PendingWrites;
+			#endif
 		#else
 			typedef std::map<uint8_t* const, DistanceBasedInjectorRecord*>							PendingWrites;
 		#endif
@@ -205,7 +213,7 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 				
 	public:
 		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-									const InjectionConfigurationBorrower& injectorCfg);
+									const InjectionConfigurationLocal& injectorCfg);
 		~ShortTermApproximateBuffer();
 
 		virtual void BackupReadData(uint8_t* const data);
@@ -242,8 +250,12 @@ class InjectionRecord {
 	class WriteSupportRecord {
 		public:
 			#if MULTIPLE_BER_CONFIGURATION
-				#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-					double writeSupport;
+				#if !DISTANCE_BASED_FAULT_INJECTOR
+					#if MULTIPLE_BER_ELEMENT
+						double const * writeSupport;
+					#else
+						double writeSupport;
+					#endif
 				#else
 					DistanceBasedInjectorRecord* writeSupport;
 				#endif
@@ -256,7 +268,7 @@ class InjectionRecord {
 #endif
 
 namespace BorrowedMemory {
-	//#if CHOSEN_TERM_BUFFER == LONG_TERM_BUFFER
+	//#if LONG_TERM_BUFFER
 		typedef std::unordered_multimap<size_t, std::unique_ptr<InjectionRecord[]>> InjectionRecordPool;
 		typedef std::unordered_multimap<size_t, std::unique_ptr<uint8_t[]>> ReadBackupsPool;
 
@@ -269,7 +281,7 @@ namespace BorrowedMemory {
 		#endif
 	//#endif
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		typedef std::unordered_multimap<size_t, std::unique_ptr<uint64_t[]>> LastAccessPeriodPool;
 		extern LastAccessPeriodPool g_lastAccessPeriodPool;
 	#endif
@@ -302,7 +314,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 
 	public:
 		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-								const InjectionConfigurationBorrower& injectorCfg);
+								const InjectionConfigurationLocal& injectorCfg);
 
 		LongTermApproximateBuffer(const LongTermApproximateBuffer&) = delete;
 		LongTermApproximateBuffer(const LongTermApproximateBuffer&&) = delete;

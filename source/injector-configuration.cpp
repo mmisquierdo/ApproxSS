@@ -10,7 +10,7 @@
 #endif
 
 ErrorType InjectionConfigurationBase::GetZeroBerValue() {
-	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+	#if DISTANCE_BASED_FAULT_INJECTOR
 		return {0, 0};
 	#else
 		#if MULTIPLE_BER_ELEMENT
@@ -54,7 +54,11 @@ bool InjectionConfigurationBase::ShouldGoOn(double const * const ber) {
 	return ber != nullptr;
 }
 
-InjectionConfigurationOwner::InjectionConfigurationOwner() : InjectionConfigurationBase() { //eu realmente preciso disso?
+/////////////////////////////////////////////////////////////////////////
+//					InjectionConfigurationReference
+/////////////////////////////////////////////////////////////////////////
+
+InjectionConfigurationReference::InjectionConfigurationReference() : InjectionConfigurationBase() { //eu realmente preciso disso?
 	for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 		#if MULTIPLE_BER_CONFIGURATION
 			this->m_bers[i] = MultiBer();
@@ -64,7 +68,7 @@ InjectionConfigurationOwner::InjectionConfigurationOwner() : InjectionConfigurat
 	}
 }
 
-std::string InjectionConfigurationOwner::BerToString(const std::unique_ptr<double[]>& ber) const {
+std::string InjectionConfigurationReference::BerToString(const std::unique_ptr<double[]>& ber) const {
 	std::string s;
 	if (ber) {
 		for (size_t i = 0; i < (this->GetBitDepth() - 1); ++i) {
@@ -77,31 +81,31 @@ std::string InjectionConfigurationOwner::BerToString(const std::unique_ptr<doubl
 	return (s + ';'); 
 }
 
-std::string InjectionConfigurationOwner::BerToString(const std::pair<double, double>& ber) const {
+std::string InjectionConfigurationReference::BerToString(const std::pair<double, double>& ber) const {
 	return std::to_string(ber.first) + " " + std::to_string(ber.second) + ";"; 
 }
 
-std::string InjectionConfigurationOwner::BerToString(const double ber) const {
+std::string InjectionConfigurationReference::BerToString(const double ber) const {
 	return std::to_string(ber) + ";"; 
 }
 
-std::string InjectionConfigurationOwner::BerToString(const MultiBer& ber) const {
+std::string InjectionConfigurationReference::BerToString(const MultiBer& ber) const {
 	std::stringstream s;
 	for (size_t i = 0; i < ber.count; ++i) {
-		s << " " << InjectionConfigurationOwner::BerToString(ber.values[i]);
+		s << " " << InjectionConfigurationReference::BerToString(ber.values[i]);
 	}
 
 	return s.str();
 }
 
-std::string InjectionConfigurationOwner::toString(const std::string& lineStart /*= ""*/) const {
+std::string InjectionConfigurationReference::toString(const std::string& lineStart /*= ""*/) const {
 	std::string s = "";
 	s += lineStart + "ConfigurationId: "	+ std::to_string(this->GetConfigurationId())	+ "\n";
 	s += lineStart + "BitDepth: "			+ std::to_string(this->GetBitDepth())			+ "\n";
 
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		s += lineStart + ErrorCategoryNames[errorCat] + "Ber: "
-			+ InjectionConfigurationOwner::BerToString(this->m_bers[errorCat])
+			+ InjectionConfigurationReference::BerToString(this->m_bers[errorCat])
 			+ "\n";
 	}
 
@@ -109,99 +113,135 @@ std::string InjectionConfigurationOwner::toString(const std::string& lineStart /
 }
 
 #if MULTIPLE_BER_CONFIGURATION
-	void InjectionConfigurationOwner::SetBer(const size_t errorCat, const size_t index, const ErrorType ber) {
+	ErrorType InjectionConfigurationReference::GetBer(const size_t errorCat, const size_t index) const {
+		const auto& ber = this->m_bers[errorCat].values[index % this->GetBerCount(errorCat)];
 		#if MULTIPLE_BER_ELEMENT
-			this->m_bers[errorCat].values[index] = std::unique_ptr<ErrorTypeStore[]>(ber); //TODO: CONTINUAR DAQUI
+			return ber.get();
+		#else
+			return ber;
+		#endif
+	}
+
+	void InjectionConfigurationReference::SetBer(const size_t errorCat, const size_t index,	ErrorTypeStore& ber) {
+		#if MULTIPLE_BER_ELEMENT
+			this->m_bers[errorCat].values[index] = ErrorTypeStore(ber.release());
 		#else
 			this->m_bers[errorCat].values[index] = ber;
 		#endif
 	}
 
-	void InjectionConfigurationOwner::SetBerCount(const size_t errorCat, const size_t count) {
+	size_t InjectionConfigurationReference::GetBerCount(const size_t errorCat) const {
+		return this->m_bers[errorCat].count;
+	}
+
+	void InjectionConfigurationReference::SetBerCount(const size_t errorCat, const size_t count) {
 		this->m_bers[errorCat].count = count;
 		this->m_bers[errorCat].values = std::unique_ptr<ErrorTypeStore[]>(new ErrorTypeStore[count]); //TODO: should zero-initialize?
 	}
+
+#else
+
+	ErrorType InjectionConfigurationReference::GetBer(const size_t errorCat) const {
+		const auto& ber = this->m_bers[errorCat];
+		#if MULTIPLE_BER_ELEMENT
+			return ber.get();
+		#else
+			return ber;
+		#endif
+	}
+
+	void InjectionConfigurationReference::SetBer(const size_t errorCat, ErrorTypeStore& ber) {
+		#if MULTIPLE_BER_ELEMENT
+			this->m_bers[errorCat] = ErrorTypeStore(ber.release());
+		#else
+			this->m_bers[errorCat] = ber;
+		#endif
+	}
 #endif
 
-InjectionConfigurationBorrower::InjectionConfigurationBorrower(const InjectionConfigurationOwner& owner) : InjectionConfigurationBase(), m_owner(owner) {
-	#if MULTIPLE_BER_CONFIGURATION
+/////////////////////////////////////////////////////////////////////////
+//					InjectionConfigurationLocal
+/////////////////////////////////////////////////////////////////////////
+
+#if MULTIPLE_BER_CONFIGURATION
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(), m_reference(reference) {
 		this->m_creationPeriod = g_currentPeriod;
+		this->UpdateBers();
+	}
+#else
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase() {
+		for (size_t i = 0; i << ErrorCategory::Size; ++i) {
+			this->m_bers[i] = reference.GetBer(i);
+			this->ReviseShouldGoOn(errorCat);
+		}
+	}
+#endif
 
-		
-		this->ReviseBers();
+void InjectionConfigurationLocal::ReviseShouldGoOn(const size_t errorCat) {
+	#if MULTIPLE_BER_CONFIGURATION && ENABLE_PASSIVE_INJECTION
+		//this->m_shouldGoOn[errorCat] = (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
+		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
 	#else
-
+		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat));
 	#endif
 }
 
-void InjectionConfigurationBorrower::SetBer(const size_t errorCat, const ErrorType ber) {
-	this->m_bers[errorCat] = ber;
-	this->ReviseShouldGoOn(errorCat);
+bool InjectionConfigurationLocal::GetShouldGoOn(const size_t errorCat) const {
+	return this->m_shouldGoOn[errorCat];
+}
+
+ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
+	return this->m_bers[errorCat];
 }
 
 #if MULTIPLE_BER_CONFIGURATION
-	void InjectionConfigurationBorrower::AdvanceBerIndex() {
-		this->ReviseBers();
+	ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat, const size_t index) const {
+		return this->m_reference.GetBer(errorCat, index);
 	}
 
-	void InjectionConfigurationBorrower::ResetBerIndex(const uint64_t newCreationPeriod) {
+	void InjectionConfigurationLocal::AdvanceBerIndex() {
+		this->UpdateBers();
+	}
+
+	void InjectionConfigurationLocal::ResetBerIndex(const uint64_t newCreationPeriod) {
 		this->m_creationPeriod = newCreationPeriod;
-		this->ReviseBers();
+		this->UpdateBers();
 	}
 
-	void InjectionConfigurationBorrower::ReviseBers() {
+	void InjectionConfigurationLocal::UpdateBers() {
 		for (size_t i = 0; i < ErrorCategory::Size; i++) {
-			this->ReviseBer(i);
+			this->UpdateBer(i);
 		}
 	}
 
-	void InjectionConfigurationBorrower::ReviseBer(const size_t errorCat) {
-		this->SetBer(errorCat, this->GetBer(errorCat, this->GetBerIndex()));
+	void InjectionConfigurationLocal::UpdateBer(const size_t errorCat) {
+		this->m_bers[errorCat] = this->m_reference.GetBer(errorCat, this->GetBerIndex());
+		this->ReviseShouldGoOn(errorCat);
 	}
 
-	uint64_t InjectionConfigurationBorrower::GetBerCurrentIndex(const size_t errorCat) const {
+	size_t InjectionConfigurationLocal::GetBerCount(const size_t errorCat) const {
+		return this->m_reference.GetBerCount(errorCat);
+	}
+
+	uint64_t InjectionConfigurationLocal::GetBerCurrentIndex(const size_t errorCat) const {
 		return (this->GetBerIndex() % this->GetBerCount(errorCat));
 	}
 
-	ErrorType InjectionConfigurationBorrower::GetBer(const size_t errorCat, const size_t index) const {
-		return (*this->m_bersArray)[errorCat].values[index % this->GetBerCount(errorCat)];
-	}
-
-	size_t InjectionConfigurationBorrower::GetBerCount(const size_t errorCat) const {
-		return (*this->m_bersArray)[errorCat].count;
-	}
-
-	uint64_t InjectionConfigurationBorrower::GetCreationPeriod() const {
+	uint64_t InjectionConfigurationLocal::GetCreationPeriod() const {
 		return this->m_creationPeriod;
 	}
 
-	uint64_t InjectionConfigurationBorrower::GetBerIndex() const {
+	uint64_t InjectionConfigurationLocal::GetBerIndex() const {
 		return g_currentPeriod - this->GetCreationPeriod();
 	}
 
-	uint64_t InjectionConfigurationBorrower::GetBerIndexFromPeriod(const uint64_t period) const {
+	uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const uint64_t period) const {
 		return period - this->GetCreationPeriod();
 	}
-
-	/*InjectionConfigurationBorrower::InjectionConfigurationBorrower(const InjectionConfigurationBorrower& other) {
-		*this = other;
-	}*/
-
-	/*InjectionConfigurationBorrower& InjectionConfigurationBorrower::operator=(const InjectionConfigurationBorrower& other) {
-		if (this != &other)	{
-			this->m_configurationId	= other.m_configurationId;
-			this->m_bitDepth 		= other.m_bitDepth;
-			this->m_bersArray		= other.m_bersArray;
-
-			this->ResetBerIndex(g_currentPeriod);
-		}
-
-		return *this;
-	}*/
 #endif
 
-#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR && !MULTIPLE_BER_ELEMENT
-	double InjectionConfigurationBorrower::GetBer(const size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const {
+#if OVERCHARGE_BER
+	double InjectionConfigurationLocal::GetBer(const size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const {
 		const uint64_t markerDif = currentIndex - pastIndex;
 		#if MULTIPLE_BER_CONFIGURATION
 			if (this->GetBerCount(errorCat) == 1) {
@@ -229,20 +269,3 @@ void InjectionConfigurationBorrower::SetBer(const size_t errorCat, const ErrorTy
 		#endif
 	}
 #endif
-
-void InjectionConfigurationBorrower::ReviseShouldGoOn(const size_t errorCat) {
-	#if MULTIPLE_BER_CONFIGURATION && ENABLE_PASSIVE_INJECTION
-		//this->m_shouldGoOn[errorCat] = (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
-		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
-	#else
-		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat));
-	#endif
-}
-
-bool InjectionConfigurationBorrower::GetShouldGoOn(const size_t errorCat) const {
-	return this->m_shouldGoOn[errorCat];
-}
-
-ErrorType InjectionConfigurationBorrower::GetBer(const size_t errorCat) const {
-	return this->m_bers[errorCat];
-}

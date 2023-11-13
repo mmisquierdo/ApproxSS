@@ -1,7 +1,7 @@
 #include "approximate-buffer.h"
 
 namespace BorrowedMemory {
-	//#if CHOSEN_TERM_BUFFER == LONG_TERM_BUFFER
+	//#if LONG_TERM_BUFFER
 		InjectionRecordPool g_injectionRecords;
 		ReadBackupsPool g_readBackups;
 
@@ -10,12 +10,12 @@ namespace BorrowedMemory {
 		#endif
 	//#endif
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		LastAccessPeriodPool g_lastAccessPeriodPool;
 	#endif
 }
 
-ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationBorrower& injectorCfg) : 
+ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationLocal& injectorCfg) : 
 	m_id(id),
 	m_bufferRange(bufferRange),
 	m_dataSizeInBytes(dataSizeInBytes),	
@@ -26,7 +26,7 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 	m_periodLog(creationPeriod, injectorCfg),
 	m_bufferLogs(),
 
-	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+	#if DISTANCE_BASED_FAULT_INJECTOR
 		m_faultInjector(injectorCfg, dataSizeInBytes)
 	#else
 		m_faultInjector(injectorCfg)
@@ -34,17 +34,17 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 {
 
 	if (this->m_faultInjector.GetBitDepth() > (this->m_dataSizeInBytes * BYTE_SIZE)) {
-		std::cout << ("Pintool Error: Bit Depth (" + std::to_string(injectorCfg.GetBitDepth()) + "bits in Configuration " + std::to_string(injectorCfg.GetConfigurationId()) + ") greater than Data Size (" + std::to_string(this->m_dataSizeInBytes * BYTE_SIZE) + "bits in Buffer " + std::to_string(this->m_id) + ")") << std::endl;
+		std::cout << ("ApproxSS Error: Bit Depth (" + std::to_string(injectorCfg.GetBitDepth()) + "bits in Configuration " + std::to_string(injectorCfg.GetConfigurationId()) + ") greater than Data Size (" + std::to_string(this->m_dataSizeInBytes * BYTE_SIZE) + "bits in Buffer " + std::to_string(this->m_id) + ")") << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
 	if (this->m_bufferRange.m_initialAddress > this->m_bufferRange.m_finalAddress) {
-		std::cout << ("Pintool Error: On Buffer " + std::to_string(this->m_id) + ".  Initial address (" + std::to_string((size_t) this->m_bufferRange.m_initialAddress) + ") must be less than final address (" + std::to_string((size_t) this->m_bufferRange.m_finalAddress)  + ")") << std::endl; //static_cast<size_t>
+		std::cout << ("ApproxSS Error: On Buffer " + std::to_string(this->m_id) + ".  Initial address (" + std::to_string((size_t) this->m_bufferRange.m_initialAddress) + ") must be less than final address (" + std::to_string((size_t) this->m_bufferRange.m_finalAddress)  + ")") << std::endl; //static_cast<size_t>
 		std::exit(EXIT_FAILURE);
 	}
 
 	if (this->m_bufferRange.size() < this->m_dataSizeInBytes) {
-		std::cout << ("Pintool Error: On Buffer " + std::to_string(this->m_id) + ". Buffer Size (" + std::to_string(this->m_bufferRange.size()) + ") must be greater or equal to Data Size (" + std::to_string(this->m_dataSizeInBytes) + ")") << std::endl;
+		std::cout << ("ApproxSS Error: On Buffer " + std::to_string(this->m_id) + ". Buffer Size (" + std::to_string(this->m_bufferRange.size()) + ") must be greater or equal to Data Size (" + std::to_string(this->m_dataSizeInBytes) + ")") << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
@@ -53,19 +53,19 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 
 void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 	#if ENABLE_PASSIVE_INJECTION
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-		using namespace BorrowedMemory;
-		const LastAccessPeriodPool::iterator accessIt = g_lastAccessPeriodPool.find(this->GetNumberOfElements());
-		if (accessIt != g_lastAccessPeriodPool.cend()) {
-			this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(accessIt->second.release());
-			g_lastAccessPeriodPool.erase(accessIt);
-		} else {
-			this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>((uint64_t*) std::malloc(this->GetNumberOfElements() * sizeof(uint64_t)));
-		}
+		#if !DISTANCE_BASED_FAULT_INJECTOR
+			using namespace BorrowedMemory;
+			const LastAccessPeriodPool::iterator accessIt = g_lastAccessPeriodPool.find(this->GetNumberOfElements());
+			if (accessIt != g_lastAccessPeriodPool.cend()) {
+				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(accessIt->second.release());
+				g_lastAccessPeriodPool.erase(accessIt);
+			} else {
+				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>((uint64_t*) std::malloc(this->GetNumberOfElements() * sizeof(uint64_t)));
+			}
 
-		if (this->m_lastAccessPeriod[0] != period) {
-			std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
-		}
+			if (this->m_lastAccessPeriod[0] != period) {
+				std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
+			}
 		#else
 			this->m_lastPassiveInjectionPeriod = period;
 		#endif
@@ -73,7 +73,7 @@ void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 }
 
 void ApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRecords) {
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		if (giveAwayRecords) {
 				BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<uint64_t[]>(this->m_lastAccessPeriod.release())});
 			} else {
@@ -120,7 +120,7 @@ void ApproximateBuffer::StoreCurrentPeriodLog() {
 }
 
 void ApproximateBuffer::NextPeriod(const uint64_t period) {
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR 
+	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
 		if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 			this->m_faultInjector.InjectFault(this->m_bufferRange.m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 			this->m_lastPassiveInjectionPeriod = period;
@@ -216,7 +216,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 		}
 	#endif
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR
 		void ApproximateBuffer::UpdateLastAccessPeriod(uint8_t const * const initialAddress, const uint32_t accessSize) {
 			const size_t initialElementIndex = this->GetIndexFromAddress(initialAddress);
 			const size_t elementCount = accessSize / this->m_dataSizeInBytes;
@@ -235,7 +235,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 	#endif
 
 	void ApproximateBuffer::ApplyAllPassiveErrors() {
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->ApplyPassiveFault(this->m_bufferRange.m_initialAddress, this->m_bufferRange.m_finalAddress);
 		#else
 			if (this->GetCurrentPassiveBerMarker() != this->m_lastPassiveInjectionPeriod) {
@@ -247,7 +247,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 		#endif
 	}
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR
 		void ApproximateBuffer::ApplyPassiveFault(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 			if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 				size_t elementIndex = this->GetIndexFromAddress(initialAddress);
@@ -268,27 +268,12 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 		void ApproximateBuffer::ApplyPassiveFault(const size_t elementIndex, uint8_t * const accessedAddress) {
 			const uint64_t currentMarker = this->GetCurrentPassiveBerMarker();
 			
-			#if LOG_FAULTS
+			#if OVERCHARGE_BER
 				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
-				BufferLogs::const_iterator it = this->m_bufferLogs.find(initialMarker);
-
-				for (/**/; initialMarker < currentMarker; ++initialMarker, this->AdvanceBufferLogIterator(it)) {
-					uint64_t* const passiveErrorCount = this->GetPassiveErrorsLogFromIterator(it);
-
-					#if MULTIPLE_BER_CONFIGURATION
-						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, this->m_faultInjector.GetBerIndexFromPeriod(initialMarker));
-					#else
-						const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive);
-					#endif
-
-					if (ber || !MULTIPLE_BER_CONFIGURATION) { //if MULTIPLE_BER_CONFIGURATION is false, the check is optimized away
-						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, passiveErrorCount);
-					}
-				}
-			#else
-				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
+				
 				if (currentMarker > initialMarker) {
-					const double ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, initialMarker, currentMarker);
+					const auto& ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, initialMarker, currentMarker);
+
 					if (ber || !MULTIPLE_BER_CONFIGURATION) {
 						#if OVERCHARGE_FLIP_BACK
 							this->m_faultInjector.InjectFaultOvercharged(accessedAddress, ber);
@@ -296,7 +281,31 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 							this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr);
 						#endif
 					}
+
 					initialMarker = currentMarker;
+				}
+			#else
+				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
+
+				#if LOG_FAULTS
+					BufferLogs::const_iterator it = this->m_bufferLogs.find(initialMarker);
+				#endif
+
+				for (/**/; initialMarker < currentMarker; ++initialMarker) {
+					#if LOG_FAULTS
+						this->AdvanceBufferLogIterator(it);
+						uint64_t* const passiveErrorCount = this->GetPassiveErrorsLogFromIterator(it);
+					#endif
+
+					#if MULTIPLE_BER_CONFIGURATION
+						const auto& ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, this->m_faultInjector.GetBerIndexFromPeriod(initialMarker));
+					#else
+						const auto& ber = this->m_faultInjector.GetBer(ErrorCategory::Passive);
+					#endif
+
+					if (ber || !MULTIPLE_BER_CONFIGURATION) { //if MULTIPLE_BER_CONFIGURATION is false, the check is optimized away
+						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr AND_LOG_ARGUMENT(passiveErrorCount));
+					}
 				}
 			#endif
 		}
@@ -377,7 +386,7 @@ void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::arra
 /* ==================================================================== */
 
 ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-													const InjectionConfigurationBorrower& injectorCfg) : 
+													const InjectionConfigurationLocal& injectorCfg) : 
 													ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg),
 													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cend())
 													{}
@@ -429,7 +438,7 @@ auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::co
 			return it->second;
 		#endif
 	#else
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if !DISTANCE_BASED_FAULT_INJECTOR
 			return this->m_faultInjector.GetBer(ErrorCategory::Write);
 		#else
 			return this->m_faultInjector.GetInjectorRecord(ErrorCategory::Write);
@@ -451,7 +460,7 @@ PendingWrites::const_iterator ShortTermApproximateBuffer::ApplyFaultyWrite(const
 	uint8_t* const address = ShortTermApproximateBuffer::GetWriteAddressFromIterator(it);
 	const auto ber = ShortTermApproximateBuffer::GetWriteBerFromIterator(it); 
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR
 		this->m_faultInjector.InjectFault(address, ber, nullptr AND_LOG_ARGUMENT(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
 	#else
 		this->m_faultInjector.InjectFault(address, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr AND_LOG_ARGUMENT(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
@@ -488,14 +497,14 @@ void ShortTermApproximateBuffer::ApplyAllWriteErrors() {
 void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, PendingWrites::const_iterator& hint) {
 	#if MULTIPLE_BER_CONFIGURATION
 		#if LOG_FAULTS
-			#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-				std::pair<double, uint64_t*> insertedValue = std::make_pair(this->m_faultInjector.GetBer(ErrorCategory::Write), this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Write));
+			#if !DISTANCE_BASED_FAULT_INJECTOR
+				const auto& insertedValue = std::make_pair(this->m_faultInjector.GetBer(ErrorCategory::Write), this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Write));
 			#else
 				std::pair<DistanceBasedInjectorRecord*, uint64_t*> insertedValue = std::make_pair(this->m_faultInjector.GetInjectorRecord(ErrorCategory::Write), this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Write));
 			#endif
 		#else
-			#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-				double insertedValue = this->m_faultInjector.GetBer(ErrorCategory::Write);
+			#if !DISTANCE_BASED_FAULT_INJECTOR
+				const auto& insertedValue = this->m_faultInjector.GetBer(ErrorCategory::Write);
 			#else
 				DistanceBasedInjectorRecord* insertedValue = this->m_faultInjector.GetInjectorRecord(ErrorCategory::Write);
 			#endif
@@ -568,7 +577,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAd
 
 	this->InvalidateRemainingRead(initialAddress, finalAddress);
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR 
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR 
 		this->UpdateLastAccessPeriod(initialAddress);
 	#endif
 	
@@ -598,7 +607,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * 
 
 	this->InvalidateRemainingRead(accessedAddress);
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->UpdateLastAccessPeriod(accessedAddress);
 	#endif
 	
@@ -617,12 +626,12 @@ void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAdd
 
 	this->ApplyFaultyWrite(initialAddress, finalAddress);
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR && ENABLE_PASSIVE_INJECTION
+	#if !DISTANCE_BASED_FAULT_INJECTOR && ENABLE_PASSIVE_INJECTION
 		this->ApplyPassiveFault(initialAddress, finalAddress);
 	#endif
 
 	if (this->GetShouldInject(ErrorCategory::Read)) {		
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if !DISTANCE_BASED_FAULT_INJECTOR
 			for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
 				this->m_faultInjector.InjectFault(currentAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 			}
@@ -652,12 +661,12 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 
 	this->ApplyFaultyWrite(accessedAddress);
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->ApplyPassiveFault(accessedAddress);
 	#endif
 
 	if (shouldInject) {		
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		#else
 			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
@@ -670,7 +679,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 /* ==================================================================== */
 
 LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
-						  	const InjectionConfigurationBorrower& injectorCfg) : 
+						  	const InjectionConfigurationLocal& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
 	
 	this->InitializeRecordsAndBackups(creationPeriod);
@@ -722,7 +731,7 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 			BorrowedMemory::g_writeSupportRecordPool.insert({this->GetNumberOfElements(), std::unique_ptr<WriteSupportRecord[]>(this->m_writeSupportRecords.release())});
 		#endif
 
-		#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 			BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<uint64_t[]>(this->m_lastAccessPeriod.release())});
 		#endif
 
@@ -734,7 +743,7 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 			this->m_writeSupportRecords.reset();
 		#endif
 
-		#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 			this->m_lastAccessPeriod.reset();
 		#endif
 	}
@@ -748,7 +757,7 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 			this->ProcessReadMemoryElement(elementIndex, address, false);
 		}		
 
-		#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR //otherwise, applied by the loop above
+		#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR //otherwise, applied by the loop above
 			this->ApplyAllPassiveErrors(); 
 		#endif
 
@@ -768,7 +777,7 @@ void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 
 void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {
 	#if MULTIPLE_BER_CONFIGURATION
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->m_writeSupportRecords[elementIndex].writeSupport = this->m_faultInjector.GetBer(ErrorCategory::Write);
 		#else
 			this->m_writeSupportRecords[elementIndex].writeSupport = this->m_faultInjector.GetInjectorRecord(ErrorCategory::Write);
@@ -790,7 +799,7 @@ void LongTermApproximateBuffer::ReverseFaultyRead(const size_t elementIndex, uin
 
 
 auto LongTermApproximateBuffer::GetWriteBer(const size_t elementIndex) {
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR
 		#if MULTIPLE_BER_CONFIGURATION 
 			return this->m_writeSupportRecords[elementIndex].writeSupport;
 		#else
@@ -808,24 +817,22 @@ auto LongTermApproximateBuffer::GetWriteBer(const size_t elementIndex) {
 void LongTermApproximateBuffer::ApplyWriteFault(const size_t elementIndex, uint8_t* const accessedAddress) {
 	auto ber = this->GetWriteBer(elementIndex);
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
-		#if LOG_FAULTS
-			this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr, this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit);
-		#else
-			#if ENABLE_PASSIVE_INJECTION
-				ber += this->m_faultInjector.GetBer(ErrorCategory::Passive, this->m_lastAccessPeriod[elementIndex], this->GetCurrentPassiveBerMarker());
-				this->m_lastAccessPeriod[elementIndex] = this->GetCurrentPassiveBerMarker();
-			#endif
+	#if OVERCHARGE_BER 
+		ber += this->m_faultInjector.GetBer(ErrorCategory::Passive, this->m_lastAccessPeriod[elementIndex], this->GetCurrentPassiveBerMarker());
+		this->m_lastAccessPeriod[elementIndex] = this->GetCurrentPassiveBerMarker();
 
-			#if OVERCHARGE_FLIP_BACK
-				this->m_faultInjector.InjectFaultOvercharged(accessedAddress, ber);
-			#else
-				this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr);
-			#endif
+		#if OVERCHARGE_FLIP_BACK
+			this->m_faultInjector.InjectFaultOvercharged(accessedAddress, ber);
+		#else
+			this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr);
 		#endif
 	#else
-		//USING THE DISTANCE_BASED_FAULT_INJECTOR THE ERRORS ARE INSERTED EVERY NEXTPERIOD() OR RETIREBUFFER()
-		this->m_faultInjector.InjectFault(accessedAddress, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr AND_LOG_ARGUMENT(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
+		#if !DISTANCE_BASED_FAULT_INJECTOR
+			this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr AND_LOG_ARGUMENT(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
+		#else
+			//USING THE DISTANCE_BASED_FAULT_INJECTOR THE ERRORS ARE INSERTED EVERY NEXTPERIOD() OR RETIREBUFFER()
+			this->m_faultInjector.InjectFault(accessedAddress, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr AND_LOG_ARGUMENT(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
+		#endif
 	#endif
 }
 
@@ -840,7 +847,7 @@ void LongTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject) {
 	this->m_records[elementIndex].errorStatus = newStatus;
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->UpdateLastAccessPeriod(elementIndex);
 	#endif
 
@@ -863,11 +870,11 @@ void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementInd
 		currentErrorStatus = ErrorStatus::None;
 	}
 
-	#if ENABLE_PASSIVE_INJECTION && CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->ApplyPassiveFault(elementIndex, accessedAddress);
 	#endif
 
-	#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR
 		if (shouldInject) {
 			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
@@ -924,7 +931,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddr
 		this->ProcessReadMemoryElement(currentElementIndex, currentAddress, shouldInject);
 	}
 
-	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+	#if DISTANCE_BASED_FAULT_INJECTOR
 		if (shouldInject) {
 			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
@@ -951,7 +958,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 
 	this->ProcessReadMemoryElement(elementIndex, accessedAddress, shouldInject);
 
-	#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+	#if DISTANCE_BASED_FAULT_INJECTOR
 		if (shouldInject) {
 			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}

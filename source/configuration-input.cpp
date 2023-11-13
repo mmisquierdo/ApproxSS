@@ -90,22 +90,22 @@ size_t PintoolInput::AssertConsumptionFieldCode(const std::string& s, const size
 	if (receivedFieldCode & expectedFieldCodes) { //yes, a bitwise AND, it's dealing with bitfields
 		return receivedFieldCode;
 	} else {
-		std::cout << "Pintool Error: malformed profile. Expected: " << GetExpectedConsumptionFieldsNames(expectedFieldCodes) << ". Found: \"" << s << "\"." << std::endl;
+		std::cout << "ApproxSS Error: malformed profile. Expected: " << GetExpectedConsumptionFieldsNames(expectedFieldCodes) << ". Found: \"" << s << "\"." << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 }
 
 
-size_t PintoolInput::CountSemicolon(const std::string& values, const size_t lineCount, const size_t maxSemiColonCount /*= std::numeric_limits<size_t>::max()*/) {
-	const size_t count = static_cast<size_t>(std::count(values.begin(), values.end(), ';'));
+size_t PintoolInput::CountCharacter(const std::string& values, const size_t lineCount, const char character /*= ';'*/, const size_t maxSemiColonCount /*= std::numeric_limits<size_t>::max()*/) {
+	const size_t count = static_cast<size_t>(std::count(values.begin(), values.end(), character));
 
 	if (!count) {
-		std::cout << ("Pintool Error: No semicolon (;) found to separate  Bit Error Rate (BER) values. Line: " + std::to_string(lineCount) + ". Found : \"" + values + "\".") << std::endl;
+		std::cout << ("ApproxSS Error: No separators (\"" + std::to_string(character) + "\") found for Bit Error Rate (BER) values. Line: " + std::to_string(lineCount) + ". Found : \"" + values + "\".") << std::endl;
 		std::exit(EXIT_FAILURE);
 	} 
 
 	if (count > maxSemiColonCount) {
-		std::cout << ("Pintool Error: Found more separators (\";\") than supported. Line: " + std::to_string(lineCount) + ". Found: " + std::to_string(count) + ". Maximum: " + std::to_string(maxSemiColonCount)) << std::endl;
+		std::cout << ("ApproxSS Error: Found more separators (\"" + std::to_string(character) + "\") than supported. Line: " + std::to_string(lineCount) + ". Found: " + std::to_string(count) + ". Maximum: " + std::to_string(maxSemiColonCount)) << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
@@ -125,7 +125,7 @@ void PintoolInput::ProcessBerConfiguration(const std::string& value, const size_
 void PintoolInput::ProcessBerConfiguration(const std::string& value, const size_t lineCount, double& toAtrib) {
 	toAtrib = std::stod(value);
 	if (toAtrib < 0 || toAtrib >= 1) {
-		std::cout << ("Pintool Error: Bit Error Rates (BERs) should be present in [0.0, 1.0). Found: " + std::to_string(toAtrib) + ". Line: " + std::to_string(lineCount) + ".") << std::endl;
+		std::cout << ("ApproxSS Error: Bit Error Rates (BERs) should be present in [0.0, 1.0). Found: " + std::to_string(toAtrib) + ". Line: " + std::to_string(lineCount) + ".") << std::endl;
 		std::exit(EXIT_FAILURE);
 	} 
 }
@@ -133,14 +133,49 @@ void PintoolInput::ProcessBerConfiguration(const std::string& value, const size_
 void PintoolInput::ProcessConsumptionValue(const std::string& value, const size_t lineCount, double& toAtrib) {
 	toAtrib = std::stod(value);
 	if (toAtrib < 0) {
-		std::cout << ("Pintool Error: energy consumption values should not be negative. Found: " + std::to_string(toAtrib) + ". Line: " + std::to_string(lineCount) + ".") << std::endl;
+		std::cout << "ApproxSS Error: energy consumption values should not be negative. Found: " << toAtrib << ". Line: " << lineCount << "." << std::endl;
 		std::exit(EXIT_FAILURE);
 	} 
 }
 
-void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationBorrower& injectorCfg, const size_t errorCat) {
+void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, const size_t bitDepth, std::unique_ptr<double[]>& toAtrib) {
+	const size_t berCount = PintoolInput::CountCharacter(values, lineCount, ',') + 1; //count final ; as extra comma
+
+	if (berCount <= 1) {
+		double tempBer;
+		PintoolInput::ProcessBerConfiguration(values, lineCount, tempBer);
+
+		if (tempBer == 0) {
+			return; //leaves pointer null;
+		}
+
+		toAtrib = std::make_unique<double[]>(bitDepth);
+		std::fill_n(toAtrib.get(), bitDepth, tempBer);
+		return;
+	}
+
+	if (berCount != bitDepth) {
+		std::cout << "ApproxSS Error: the amount of element Bit Error Rates (BERs) differs from the set bit depth (in an unsupported manner). Found: " << berCount << " instead of " << bitDepth << ". Line: " << lineCount << "." << std::endl;
+		std::exit(EXIT_FAILURE);
+	}
+
+	toAtrib = std::make_unique<double[]>(bitDepth);
+
+	std::string nextValues = values;
+	for (size_t i = 0; i < bitDepth; ++i) {
+		double tempBer;
+		std::string currentValue;
+
+		PintoolInput::SeparateStringOn(values, lineCount, currentValue, nextValues, ',');
+		PintoolInput::ProcessBerConfiguration(currentValue, lineCount, tempBer);
+
+		toAtrib[i] = tempBer;
+	}	
+}
+
+void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationReference& injectorCfg, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
-		injectorCfg.SetBerCount(errorCat, PintoolInput::CountSemicolon(values, lineCount));
+		injectorCfg.SetBerCount(errorCat, PintoolInput::CountCharacter(values, lineCount, ';'));
 
 		std::string nextValues = values;
 		for (size_t i = 0; i < injectorCfg.GetBerCount(errorCat); ++i) {
@@ -148,22 +183,31 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 
 			PintoolInput::SeparateStringOn(nextValues, lineCount, currentValue, nextValues, ';');
 
-			ErrorType ber;
-			PintoolInput::ProcessBerConfiguration(currentValue, lineCount, ber);
+			ErrorTypeStore ber;
+
+			#if MULTIPLE_BER_ELEMENT
+				PintoolInput::ProcessBerConfiguration(currentValue, lineCount, injectorCfg.GetBitDepth(), ber);
+			#else
+				PintoolInput::ProcessBerConfiguration(currentValue, lineCount, ber);
+			#endif
 
 			injectorCfg.SetBer(errorCat, i, ber);
 		}
-
-		injectorCfg.ReviseBer(errorCat);
 	#else
-		PintoolInput::CountSemicolon(values, lineCount, 1);
-		ErrorType ber;
-		PintoolInput::ProcessBerConfiguration(values, lineCount, ber);
+		PintoolInput::CountCharacter(values, lineCount, ';', 1);
+		ErrorTypeStore ber;
+		
+		#if MULTIPLE_BER_ELEMENT
+			PintoolInput::ProcessBerConfiguration(currentValue, lineCount, injectorCfg.GetBitDepth(), ber);
+		#else
+			PintoolInput::ProcessBerConfiguration(currentValue, lineCount, ber);
+		#endif
+
 		injectorCfg.SetBer(errorCat, ber);
 	#endif
 }
 
-void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType) {
+void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationReference& respectiveInjectorCfg, const size_t consumptionType) {
 	std::string field, value;
 	
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
@@ -183,11 +227,11 @@ void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string
 	#endif
 }
 
-void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
+void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationReference& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
-		const size_t semiColonCount = PintoolInput::CountSemicolon(values, lineCount);
+		const size_t semiColonCount = PintoolInput::CountCharacter(values, lineCount, ';');
 		if (semiColonCount != respectiveInjectorCfg.GetBerCount(errorCat)) {
-			std::cout << "Pintool Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 
+			std::cout << "ApproxSS Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 
 			std::exit(EXIT_FAILURE);
 		}
 
@@ -202,12 +246,11 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 			double consumptionValue;
 			PintoolInput::ProcessConsumptionValue(currentValue, lineCount, consumptionValue);
 
-	
 			consumptionProfile.SetConsumptionValue(consumptionType, errorCat, i, consumptionValue);
 
 		}
 	#else
-		PintoolInput::CountSemicolon(values, lineCount, 1);
+		PintoolInput::CountCharacter(values, lineCount, ';', 1);
 		double consumptionValue;
 		PintoolInput::ProcessConsumptionValue(values, lineCount, consumptionValue);
 		consumptionProfile.SetConsumptionValue(consumptionType, errorCat, consumptionValue);
@@ -217,7 +260,7 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 void PintoolInput::SeparateStringOn(const std::string& inputLine, const size_t lineCount, std::string& fistPart, std::string& secondPart, const char separator) {
 	const size_t pos = inputLine.find(separator);
 	if (pos == std::string::npos) {
-		std::cout << ("Pintool Error: malformed configuration. Missing: \"" + std::to_string(separator) + "\". Line: " + std::to_string(lineCount) + ". Found: \"" + inputLine +  "\".") << std::endl;
+		std::cout << ("ApproxSS Error: malformed configuration. Missing: \"" + std::to_string(separator) + "\". Line: " + std::to_string(lineCount) + ". Found: \"" + inputLine +  "\".") << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
@@ -243,14 +286,14 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 	std::ifstream inputFile(configurationFilename);
 
 	if (!inputFile) {
-		std::cout << ("Pintool Error: Unable to open injector configuration file.") << std::endl;
+		std::cout << ("ApproxSS Error: Unable to open injector configuration file.") << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
 	std::string line;
 	size_t lineCount = 0;
 
-	InjectionConfigurationBorrower* injectorCfg = new InjectionConfigurationBorrower();
+	InjectionConfigurationReference* injectorCfg = new InjectionConfigurationReference();
 
 	while (PintoolInput::GetNextValidLine(inputFile, line, lineCount)) {
 
@@ -258,13 +301,13 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 			const InjectorConfigurationMap::const_iterator lb = g_injectorConfigurations.lower_bound(injectorCfg->GetConfigurationId());
 
 			if (lb == g_injectorConfigurations.cend() || (g_injectorConfigurations.key_comp()(injectorCfg->GetConfigurationId(), lb->first))) {
-				g_injectorConfigurations.emplace_hint(lb, injectorCfg->GetConfigurationId(), std::unique_ptr<InjectionConfigurationBorrower>(injectorCfg));
+				g_injectorConfigurations.emplace_hint(lb, injectorCfg->GetConfigurationId(), std::unique_ptr<InjectionConfigurationReference>(injectorCfg));
 			} else {
 				std::cout << "Warning: ConfigurationId already specified. Discarding and ignoring it. Line " << lineCount << std::endl;
 				delete injectorCfg;
 			}
 
-			injectorCfg = new InjectionConfigurationBorrower();
+			injectorCfg = new InjectionConfigurationReference();
 			continue;
 		}
 
@@ -282,7 +325,7 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				{
 					const int64_t bitDepthValue = std::stoll(value);
 					if (bitDepthValue <= 0) {
-						std::cout << ("Pintool Error: Bit depth must be over 0 bits. Line: \"" + std::to_string(lineCount) + "\". Found: " + std::to_string(bitDepthValue) + ".") << std::endl;
+						std::cout << ("ApproxSS Error: Bit depth must be over 0 bits. Line: \"" + std::to_string(lineCount) + "\". Found: " + std::to_string(bitDepthValue) + ".") << std::endl;
 						std::exit(EXIT_FAILURE);
 					}
 					injectorCfg->SetBitDepth(static_cast<size_t>(bitDepthValue));
@@ -298,11 +341,11 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				#if ENABLE_PASSIVE_INJECTION
 					PintoolInput::ProcessBerConfiguration(value, lineCount, *injectorCfg, ErrorCategory::Passive);
 				#else
-					std::cout << "Pintool warning: Passive injection configuration detected, but not supported." << std::endl;
+					std::cout << "ApproxSS warning: Passive injection configuration detected, but not supported." << std::endl;
 				#endif
 				break;
 			default:
-				std::cout << ("Pintool Error: malformed configuration. Unrecognized field: \"" + field + "\". Line: " + std::to_string(lineCount) + ".") << std::endl;
+				std::cout << ("ApproxSS Error: malformed configuration. Unrecognized field: \"" + field + "\". Line: " + std::to_string(lineCount) + ".") << std::endl;
 				std::exit(EXIT_FAILURE);
 				break;
 		}
@@ -326,14 +369,14 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 
 void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 	if (profileFilename.empty()) {
-		std::cout << "Pintool reminder: memory energy consumption profile not informed. Energy consumption will not be estimated." << std::endl;	
+		std::cout << "ApproxSS reminder: memory energy consumption profile not informed. Energy consumption will not be estimated." << std::endl;	
 		return;
 	}
 
 	std::ifstream inputFile(profileFilename);
 
 	if (!inputFile) {
-		std::cout << ("Pintool Error: Unable to open memory energy consumption profile.") << std::endl;
+		std::cout << ("ApproxSS Error: Unable to open memory energy consumption profile.") << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
@@ -351,10 +394,10 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 
 		const InjectorConfigurationMap::const_iterator injectorIt = g_injectorConfigurations.find(configurationId);
 		if (injectorIt == g_injectorConfigurations.cend()) {
-			std::cout << "Pintool Error: respective injector configuration not specified. Found id: " << configurationId << "." << std::endl;
+			std::cout << "ApproxSS Error: respective injector configuration not specified. Found id: " << configurationId << "." << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
-		const InjectionConfigurationBorrower& respectiveInjectorCfg = *(injectorIt->second);
+		const InjectionConfigurationReference& respectiveInjectorCfg = *(injectorIt->second);
 
 		PintoolInput::GetNextValidLine(inputFile, line, lineCount);
 		const size_t readFieldCode = PintoolInput::AssertConsumptionFieldCode(line, ConsumptionFieldCode::NO_REFERENCE_VALUES | ConsumptionFieldCode::REFERENCE_VALUES, lineCount);
@@ -380,7 +423,7 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 
 	for (const auto& [configurationId, _] : g_injectorConfigurations) {
 		if (g_consumptionProfiles.find(configurationId) == g_consumptionProfiles.cend()) {
-			std::cout << "Pintool Error: injector configuration " << configurationId << " does not have a corresponding energy consumption profile." << std::endl;
+			std::cout << "ApproxSS Error: injector configuration " << configurationId << " does not have a corresponding energy consumption profile." << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 	}

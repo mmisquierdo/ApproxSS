@@ -3,7 +3,7 @@
 std::default_random_engine FaultInjector::generator{std::random_device{}()};
 std::uniform_real_distribution<double> FaultInjector::occurrenceDistribution{0.0f, 1.0f};
 
-FaultInjector::FaultInjector(const InjectionConfigurationBorrower& injectorCfg) : InjectionConfigurationBorrower(injectorCfg) {}
+FaultInjector::FaultInjector(const InjectionConfigurationLocal& injectorCfg) : InjectionConfigurationLocal(injectorCfg) {}
 
 
 #if !MULTIPLE_BER_ELEMENT
@@ -87,7 +87,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationBorrower& injectorCfg) 
 #endif
 
 
-GranularFaultInjector::GranularFaultInjector(const InjectionConfigurationBorrower& injectorCfg) : FaultInjector(injectorCfg) {
+GranularFaultInjector::GranularFaultInjector(const InjectionConfigurationLocal& injectorCfg) : FaultInjector(injectorCfg) {
 	this->m_instanceDistribution = std::uniform_int_distribution<size_t>(0, this->GetBitDepth() - 1);
 }
 
@@ -131,11 +131,11 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 #endif
 
 
-#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+#if DISTANCE_BASED_FAULT_INJECTOR
 	DistanceBasedInjectorRecord::DistanceBasedInjectorRecord(){}
 
 	DistanceBasedInjectorRecord::DistanceBasedInjectorRecord(const std::pair<double, double>& meanAndDev, const size_t dataSizeInBytes, const size_t bitDepth) : m_errorDistanceDistribution(meanAndDev.first, meanAndDev.second) {
-		if (!InjectionConfigurationBorrower::ShouldGoOn(meanAndDev)) {
+		if (!InjectionConfigurationLocal::ShouldGoOn(meanAndDev)) {
 			this->m_nextErrorDistance = std::numeric_limits<int64_t>::max();
 		} else {
 			this->m_nextErrorDistance = 0;
@@ -158,7 +158,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		this->m_injectionBit = static_cast<size_t>(std::abs(nextErrorDistanceInBits % static_cast<int64_t>(bitDepth)));
 	}
 
-	DistanceBasedFaultInjector::DistanceBasedFaultInjector(const InjectionConfigurationBorrower& injectorCfg, const size_t dataSizeInBytes) : FaultInjector(injectorCfg) , m_dataSizeInBytes(dataSizeInBytes) {
+	DistanceBasedFaultInjector::DistanceBasedFaultInjector(const InjectionConfigurationLocal& injectorCfg, const size_t dataSizeInBytes) : FaultInjector(injectorCfg) , m_dataSizeInBytes(dataSizeInBytes) {
 		#if MULTIPLE_BER_CONFIGURATION
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 				this->m_recordArray[i] = std::unique_ptr<DistanceBasedInjectorRecord[]>((DistanceBasedInjectorRecord*) std::malloc(sizeof(DistanceBasedInjectorRecord) * injectorCfg.GetBerCount(i)));
@@ -182,7 +182,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		}
 
 		void DistanceBasedFaultInjector::ResetBerIndex(const uint64_t newCreationPeriod) {
-			InjectionConfigurationBorrower::ResetBerIndex(newCreationPeriod);
+			InjectionConfigurationLocal::ResetBerIndex(newCreationPeriod);
 			this->ReviseRecords();
 		}
 

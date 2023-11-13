@@ -36,7 +36,7 @@ std::ofstream g_energyConsumptionOutputLog;
 
 ///////////////////////////////////////////////////////
 
-#if CHOSEN_TERM_BUFFER == LONG_TERM_BUFFER
+#if LONG_TERM_BUFFER
 	typedef LongTermApproximateBuffer ChosenTermApproximateBuffer;
 #else
 	typedef ShortTermApproximateBuffer ChosenTermApproximateBuffer;
@@ -141,7 +141,7 @@ namespace AccessHandler {
 }
 
 /* ==================================================================== */
-/* Pintool Control														*/
+/* ApproxSS Control														*/
 /* ==================================================================== */
 
 namespace PintoolControl {
@@ -209,7 +209,7 @@ namespace PintoolControl {
 				const InjectorConfigurationMap::const_iterator bcIt = g_injectorConfigurations.find(configurationId);
 
 				if (bcIt == g_injectorConfigurations.cend()) {
-					std::cout << ("Pintool Error: Configuration " + std::to_string(configurationId) + " not found.") << std::endl;
+					std::cout << ("ApproxSS Error: Configuration " + std::to_string(configurationId) + " not found.") << std::endl;
 					std::exit(EXIT_FAILURE);
 				}
 
@@ -224,7 +224,7 @@ namespace PintoolControl {
 				g_generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
 			}
 		} else {
-			std::cout << "Pintool Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
+			std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
 		}
 	}
 
@@ -244,7 +244,7 @@ namespace PintoolControl {
 			}
 		#endif
 		 else {
-			std::cout << "Pintool Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
+			std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
 		}
 	}
 }
@@ -441,9 +441,9 @@ namespace PintoolOutput {
 
 		std::cout << "PINTOOL CONFIGURATIONS:" << std::endl;
 		std::cout << "\tFault Injector: " <<
-		#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+		#if DISTANCE_BASED_FAULT_INJECTOR
 			"Distance Based"
-		#elif CHOSEN_FAULT_INJECTOR == GRANULAR_FAULT_INJECTOR
+		#elif GRANULAR_FAULT_INJECTOR
 			"Granular"
 		#else
 			"Default"
@@ -451,7 +451,7 @@ namespace PintoolOutput {
 		<< std::endl;
 
 		std::cout << "\tApproximate Buffer Term: " <<
-		#if CHOSEN_TERM_BUFFER == SHORT_TERM_BUFFER
+		#if SHORT_TERM_BUFFER
 			"Short"
 		#else
 			"Long"
@@ -493,7 +493,7 @@ namespace PintoolOutput {
 		outputFile.open(outputFilename, std::ofstream::trunc);
 
 		if (!outputFile) {
-			std::cout << ("Pintool Error: Unable to create output file: \"" + outputFilename + "\".") << std::endl;
+			std::cout << ("ApproxSS Error: Unable to create output file: \"" + outputFilename + "\".") << std::endl;
 			std::exit(EXIT_FAILURE);
 		}
 	}
@@ -550,7 +550,7 @@ namespace PintoolOutput {
 			const ConsumptionProfileMap::const_iterator profileIt = g_consumptionProfiles.find(configurationId);
 
 			if (profileIt == g_consumptionProfiles.cend()) {
-				std::cout << "Pintool Error: somehow, Consumption Profile not informed." << std::endl;
+				std::cout << "ApproxSS Error: somehow, Consumption Profile not informed." << std::endl;
 				std::exit(EXIT_FAILURE);
 			}
 
@@ -595,7 +595,7 @@ namespace PintoolOutput {
 /* ==================================================================== */
    
 INT32 Usage() {
-	PIN_ERROR("This Pintool injects memory faults at addresses registered by calling add_approx()\n" 
+	PIN_ERROR("This ApproxSS injects memory faults at addresses registered by calling add_approx()\n" 
 			  + KNOB_BASE::StringKnobSummary() + "\n");
 	return -1;
 }

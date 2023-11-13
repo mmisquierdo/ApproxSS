@@ -12,7 +12,7 @@
 
 extern uint64_t g_currentPeriod;
 
-#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+#if DISTANCE_BASED_FAULT_INJECTOR
 	typedef std::pair<double, double> ErrorType; //<mean, std-dev>
 	typedef std::pair<double, double> ErrorTypeStore; //<mean, std-dev>
 #else
@@ -41,6 +41,8 @@ class InjectionConfigurationBase {
 		size_t m_bitDepth;
 
 	public:
+		InjectionConfigurationBase();
+
 		int64_t GetConfigurationId() const;
 		size_t GetBitDepth() const;
 
@@ -53,7 +55,7 @@ class InjectionConfigurationBase {
 		static bool ShouldGoOn(double const * const ber);
 };
 
-class InjectionConfigurationOwner : public virtual InjectionConfigurationBase {
+class InjectionConfigurationReference : public virtual InjectionConfigurationBase {
 	private:
 		#if MULTIPLE_BER_CONFIGURATION
 			std::array<MultiBer, ErrorCategory::Size> m_bers;
@@ -62,7 +64,7 @@ class InjectionConfigurationOwner : public virtual InjectionConfigurationBase {
 		#endif
 
 	public: 
-		InjectionConfigurationOwner();
+		InjectionConfigurationReference();
 
 		std::string BerToString(const std::unique_ptr<double[]>& ber) const;
 		std::string BerToString(const std::pair<double, double>& ber) const;
@@ -71,51 +73,58 @@ class InjectionConfigurationOwner : public virtual InjectionConfigurationBase {
 		std::string toString(const std::string& lineStart = "") const;
 
 		#if MULTIPLE_BER_CONFIGURATION
-			void SetBer(const size_t errorCat, const size_t index, const ErrorType ber);
+			ErrorType GetBer(const size_t errorCat, const size_t index) const;
+			void SetBer(const size_t errorCat, const size_t index, ErrorTypeStore& ber);
+
+			size_t GetBerCount(const size_t errorCat) const;
 			void SetBerCount(const size_t errorCat, const size_t count);
+			
+		#else
+			ErrorType GetBer(const size_t errorCat) const;
+			void SetBer(const size_t errorCat, ErrorTypeStore& ber);
 		#endif
 };
 
-class InjectionConfigurationBorrower : public virtual InjectionConfigurationBase {
+class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 	private:
 		std::array<bool, ErrorCategory::Size> m_shouldGoOn;
 
 		std::array<ErrorType, ErrorCategory::Size> m_bers;
 
 		#if MULTIPLE_BER_CONFIGURATION
-			const InjectionConfigurationOwner& m_owner;
+			const InjectionConfigurationReference& m_reference;
 			uint64_t m_creationPeriod;
 		#endif
 
 	public:
-		InjectionConfigurationBorrower(const InjectionConfigurationOwner& owner);
+		InjectionConfigurationLocal(const InjectionConfigurationReference& reference);
 
 		bool GetShouldGoOn(const size_t errorCat) const;
 		void ReviseShouldGoOn(const size_t errorCat);
 	
 		ErrorType GetBer(const size_t errorCat) const;
-		void SetBer(const size_t errorCat, const ErrorType ber);		
 
 		#if MULTIPLE_BER_CONFIGURATION
+			ErrorType GetBer(const size_t errorCat, const size_t index) const;	
+
 			uint64_t GetBerCurrentIndex(const size_t errorCat) const;
-			ErrorType GetBer(const size_t errorCat, const size_t index) const;
-			size_t GetBerCount(const size_t errorCat) const;
 			uint64_t GetCreationPeriod() const;
 			uint64_t GetBerIndex() const;
 			uint64_t GetBerIndexFromPeriod(const uint64_t period) const;
+			size_t GetBerCount(const size_t errorCat) const;
 
 			void AdvanceBerIndex();
 			void ResetBerIndex(const uint64_t newCreationPeriod);
-			void ReviseBers();
-			void ReviseBer(const size_t errorCat);
+			void UpdateBers();
+			void UpdateBer(const size_t errorCat);
 		#endif
 
-		#if CHOSEN_FAULT_INJECTOR != DISTANCE_BASED_FAULT_INJECTOR 
+		#if OVERCHARGE_BER 
 			double GetBer(size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const;
 		#endif
 };
 
-typedef std::map<int64_t, const std::unique_ptr<const InjectionConfigurationOwner>> InjectorConfigurationMap; 
+typedef std::map<int64_t, const std::unique_ptr<const InjectionConfigurationReference>> InjectorConfigurationMap; 
 extern InjectorConfigurationMap g_injectorConfigurations;
 
 #endif /* INJECTOR_CONFIGURATION_H */

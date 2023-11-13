@@ -73,16 +73,17 @@ namespace PintoolInput {
 	size_t ErrorCategoryToConsumptionFieldCode(const size_t errorCat); //eu me odeio por essa gambiarra
 	std::string GetExpectedConsumptionFieldsNames(size_t expectedFieldCodes);
 
-	size_t CountSemicolon(const std::string& values, const size_t lineCount, const size_t maxSemiColonCount = std::numeric_limits<size_t>::max());
+	size_t CountCharacter(const std::string& values, const size_t lineCount, const char character = ';', const size_t maxSemiColonCount = std::numeric_limits<size_t>::max());
 
-	void ProcessBerConfiguration(const std::string& value, const size_t lineCount, std::pair<double, double>& toAtrib );
-	void ProcessBerConfiguration(const std::string& value, const size_t lineCount, double& toAtrib);
-	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationBorrower& injectorCfg, const size_t errorCat);
+	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, const size_t bitDepth, std::unique_ptr<double[]>& toAtrib);
+	void ProcessBerConfiguration(const std::string& value,  const size_t lineCount, std::pair<double, double>& toAtrib);
+	void ProcessBerConfiguration(const std::string& value,  const size_t lineCount, double& toAtrib);
+	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationReference& injectorCfg, const size_t errorCat);
 
 	void ProcessConsumptionValue(const std::string& value, const size_t lineCount, double& toAtrib);
 
-	void ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType);
-	void ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationBorrower& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat);
+	void ProcessConsumptionValue(std::ifstream& inputFile, std::string& line, size_t& lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationReference& respectiveInjectorCfg, const size_t consumptionType);
+	void ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationReference& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat);
 
 	void SeparateStringOn(const std::string& inputLine, const size_t lineCount, std::string& fistPart, std::string& secondPart, const char separator);
 

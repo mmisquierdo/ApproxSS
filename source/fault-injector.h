@@ -21,14 +21,15 @@ class ApproximateBuffer;
 
 extern uint64_t g_injectionCalls;
 
-class FaultInjector : public InjectionConfigurationBorrower {
+class FaultInjector : public InjectionConfigurationLocal {
 	protected: 
 		static std::uniform_real_distribution<double> occurrenceDistribution;
 		static constexpr uint8_t bitMask = 0x01;		
-		static std::default_random_engine generator;
 
 	public:
-		FaultInjector(const InjectionConfigurationBorrower& injectorCfg);
+		static std::default_random_engine generator;
+
+		FaultInjector(const InjectionConfigurationLocal& injectorCfg);
 
 		#if !MULTIPLE_BER_ELEMENT
 			void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
@@ -46,7 +47,7 @@ class GranularFaultInjector : public FaultInjector {
 		std::uniform_int_distribution<size_t> m_instanceDistribution;
 	
 	public:
-		GranularFaultInjector(const InjectionConfigurationBorrower& injectorCfg);
+		GranularFaultInjector(const InjectionConfigurationLocal& injectorCfg);
 
 		void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
 
@@ -55,7 +56,7 @@ class GranularFaultInjector : public FaultInjector {
 		#endif
 };
 
-#if CHOSEN_FAULT_INJECTOR == DISTANCE_BASED_FAULT_INJECTOR
+#if DISTANCE_BASED_FAULT_INJECTOR
 	class DistanceBasedInjectorRecord {
 		public:
 			std::normal_distribution<double> m_errorDistanceDistribution;
@@ -96,7 +97,7 @@ class GranularFaultInjector : public FaultInjector {
 				void InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
 			#endif
 			
-			DistanceBasedFaultInjector(const InjectionConfigurationBorrower& injectorCfg, const size_t dataSizeInBytes);
+			DistanceBasedFaultInjector(const InjectionConfigurationLocal& injectorCfg, const size_t dataSizeInBytes);
 
 			DistanceBasedInjectorRecord* GetInjectorRecord(const size_t errorCat);
 

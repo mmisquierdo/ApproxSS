@@ -3,29 +3,26 @@
 
 constexpr size_t BYTE_SIZE = 8;
 
-#define DEFAULT_FAULT_INJECTOR 1
-#define GRANULAR_FAULT_INJECTOR 2
-#define DISTANCE_BASED_FAULT_INJECTOR 3
+//USER-DEFINED START: just change true/false values, certain options are not compatible with others
 
-#define SHORT_TERM_BUFFER 1
-#define LONG_TERM_BUFFER 2
-
-/* DOEST NOT WORK WITH VSCODE TEXTVIEWER PREPROCESSING
-
-constexpr size_t DEFAULT_FAULT_INJECTOR = 1;
-constexpr size_t GRANULAR_FAULT_INJECTOR = 2;
-constexpr size_t DISTANCE_BASED_FAULT_INJECTOR = 3;
-
-constexpr size_t SHORT_TERM_BUFFER = 1;
-constexpr size_t LONG_TERM_BUFFER = 2;*/
-
-//USER-DEFINED START
-#ifndef CHOSEN_FAULT_INJECTOR
-	#define CHOSEN_FAULT_INJECTOR DEFAULT_FAULT_INJECTOR
+#ifndef DEFAULT_FAULT_INJECTOR
+	#define DEFAULT_FAULT_INJECTOR true
 #endif
 
-#ifndef CHOSEN_TERM_BUFFER
-	#define CHOSEN_TERM_BUFFER LONG_TERM_BUFFER
+#ifndef GRANULAR_FAULT_INJECTOR
+	#define GRANULAR_FAULT_INJECTOR (!DEFAULT_FAULT_INJECTOR && false)
+#endif
+
+#ifndef DISTANCE_BASED_FAULT_INJECTOR
+	#define DISTANCE_BASED_FAULT_INJECTOR (!DEFAULT_FAULT_INJECTOR && !GRANULAR_FAULT_INJECTOR && false)
+#endif
+
+#ifndef LONG_TERM_BUFFER
+	#define LONG_TERM_BUFFER true
+#endif
+
+#ifndef SHORT_TERM_BUFFER
+	#define SHORT_TERM_BUFFER (!LONG_TERM_BUFFER && false)
 #endif
 
 #ifndef MULTIPLE_ACTIVE_BUFFERS
@@ -41,15 +38,19 @@ constexpr size_t LONG_TERM_BUFFER = 2;*/
 #endif
 
 #ifndef MULTIPLE_BER_ELEMENT
-	#define MULTIPLE_BER_ELEMENT true
+	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && false)
 #endif
 
 #ifndef ENABLE_PASSIVE_INJECTION
-	#define ENABLE_PASSIVE_INJECTION false
+	#define ENABLE_PASSIVE_INJECTION true
+#endif
+
+#ifndef OVERCHARGE_BER
+	#define OVERCHARGE_BER (ENABLE_PASSIVE_INJECTION && !MULTIPLE_BER_ELEMENT && !DISTANCE_BASED_FAULT_INJECTOR && !LOG_FAULTS && true)
 #endif
 
 #ifndef OVERCHARGE_FLIP_BACK
-	#define OVERCHARGE_FLIP_BACK (ENABLE_PASSIVE_INJECTION && !MULTIPLE_BER_ELEMENT && false)
+	#define OVERCHARGE_FLIP_BACK (OVERCHARGE_BER && true)
 #endif
 
 #ifndef LOG_FAULTS
@@ -57,6 +58,14 @@ constexpr size_t LONG_TERM_BUFFER = 2;*/
 #endif
 //USER-DEFINED END
 
+
+#if !DEFAULT_FAULT_INJECTOR && !GRANULAR_FAULT_INJECTOR && !DISTANCE_BASED_FAULT_INJECTOR
+#	error "ApproxSS compilation error: no fault injector defined!"
+#endif
+
+#if !LONG_TERM_BUFFER && !SHORT_TERM_BUFFER
+#	error "ApproxSS compilation error: no buffer term defined!"
+#endif
 
 //AUXILIARY DATA STRUCTURES
 #include <string>
