@@ -63,7 +63,11 @@ InjectionConfigurationReference::InjectionConfigurationReference() : InjectionCo
 		#if MULTIPLE_BER_CONFIGURATION
 			this->m_bers[i] = MultiBer();
 		#else
-			this->m_bers[i] = InjectionConfigurationBase::GetZeroBerValue();
+			#if MULTIPLE_BER_ELEMENT
+				this->m_bers[i] = ErrorTypeStore(InjectionConfigurationBase::GetZeroBerValue());
+			#else	
+				this->m_bers[i] = InjectionConfigurationBase::GetZeroBerValue();
+			#endif
 		#endif
 	}
 }
@@ -172,7 +176,7 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase() {
 		for (size_t i = 0; i << ErrorCategory::Size; ++i) {
 			this->m_bers[i] = reference.GetBer(i);
-			this->ReviseShouldGoOn(errorCat);
+			this->ReviseShouldGoOn(i);
 		}
 	}
 #endif

@@ -60,7 +60,7 @@ class InjectionConfigurationReference : public virtual InjectionConfigurationBas
 		#if MULTIPLE_BER_CONFIGURATION
 			std::array<MultiBer, ErrorCategory::Size> m_bers;
 		#else 
-			std::array<ErrorTypeStore[], ErrorCategory::Size> m_bers;
+			std::array<ErrorTypeStore, ErrorCategory::Size> m_bers;
 		#endif
 
 	public: 
