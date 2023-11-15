@@ -96,16 +96,16 @@ size_t PintoolInput::AssertConsumptionFieldCode(const std::string& s, const size
 }
 
 
-size_t PintoolInput::CountCharacter(const std::string& values, const size_t lineCount, const char character /*= ';'*/, const size_t maxSemiColonCount /*= std::numeric_limits<size_t>::max()*/) {
+size_t PintoolInput::CountCharacter(const std::string& values, const size_t lineCount, const char character /*= ';'*/, const size_t minCharCount/*= 0*/, const size_t maxCharCount /*= std::numeric_limits<size_t>::max()*/) {
 	const size_t count = static_cast<size_t>(std::count(values.begin(), values.end(), character));
 
-	if (!count) {
-		std::cout << ("ApproxSS Error: No separators (\"" + std::to_string(character) + "\") found for Bit Error Rate (BER) values. Line: " + std::to_string(lineCount) + ". Found : \"" + values + "\".") << std::endl;
+	if (count < minCharCount) {
+		std::cout << "ApproxSS Error: Found less separators (\"" << character << "\") than expected. Line: " << lineCount << ". Found : " << count << ". Minimum: " << minCharCount << "." << std::endl;
 		std::exit(EXIT_FAILURE);
 	} 
 
-	if (count > maxSemiColonCount) {
-		std::cout << ("ApproxSS Error: Found more separators (\"" + std::to_string(character) + "\") than supported. Line: " + std::to_string(lineCount) + ". Found: " + std::to_string(count) + ". Maximum: " + std::to_string(maxSemiColonCount)) << std::endl;
+	if (count > maxCharCount) {
+		std::cout << "ApproxSS Error: Found more separators (\"" << character << "\") than supported. Line: " << lineCount << ". Found: " << count << ". Maximum: " << maxCharCount << "." << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 
@@ -161,12 +161,12 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 
 	toAtrib = std::make_unique<double[]>(bitDepth);
 
-	std::string nextValues = values;
+	std::string nextValues = values + ','; //gambiarra
 	for (size_t i = 0; i < bitDepth; ++i) {
 		double tempBer;
 		std::string currentValue;
 
-		PintoolInput::SeparateStringOn(values, lineCount, currentValue, nextValues, ',');
+		PintoolInput::SeparateStringOn(nextValues, lineCount, currentValue, nextValues, ',');
 		PintoolInput::ProcessBerConfiguration(currentValue, lineCount, tempBer);
 
 		toAtrib[i] = tempBer;
@@ -175,7 +175,7 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 
 void PintoolInput::ProcessBerConfiguration(const std::string& values, const size_t lineCount, InjectionConfigurationReference& injectorCfg, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
-		injectorCfg.SetBerCount(errorCat, PintoolInput::CountCharacter(values, lineCount, ';'));
+		injectorCfg.SetBerCount(errorCat, PintoolInput::CountCharacter(values, lineCount, ';', 1));
 
 		std::string nextValues = values;
 		for (size_t i = 0; i < injectorCfg.GetBerCount(errorCat); ++i) {
@@ -194,13 +194,15 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 			injectorCfg.SetBer(errorCat, i, ber);
 		}
 	#else
-		PintoolInput::CountCharacter(values, lineCount, ';', 1);
+		PintoolInput::CountCharacter(values, lineCount, ';', 1, 1);
 		ErrorTypeStore ber;
+
+		std::string cleanValue = values.substr(0, values.find(';'));
 		
 		#if MULTIPLE_BER_ELEMENT
-			PintoolInput::ProcessBerConfiguration(currentValue, lineCount, injectorCfg.GetBitDepth(), ber);
+			PintoolInput::ProcessBerConfiguration(cleanValue, lineCount, injectorCfg.GetBitDepth(), ber);
 		#else
-			PintoolInput::ProcessBerConfiguration(currentValue, lineCount, ber);
+			PintoolInput::ProcessBerConfiguration(cleanValue, lineCount, ber);
 		#endif
 
 		injectorCfg.SetBer(errorCat, ber);
@@ -229,7 +231,7 @@ void PintoolInput::ProcessConsumptionValue(std::ifstream& inputFile, std::string
 
 void PintoolInput::ProcessConsumptionValue(const std::string& values, const size_t lineCount, ConsumptionProfile& consumptionProfile, const InjectionConfigurationReference& respectiveInjectorCfg, const size_t consumptionType, const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION
-		const size_t semiColonCount = PintoolInput::CountCharacter(values, lineCount, ';');
+		const size_t semiColonCount = PintoolInput::CountCharacter(values, lineCount, ';', 1);
 		if (semiColonCount != respectiveInjectorCfg.GetBerCount(errorCat)) {
 			std::cout << "ApproxSS Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 
 			std::exit(EXIT_FAILURE);
@@ -250,7 +252,7 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 
 		}
 	#else
-		PintoolInput::CountCharacter(values, lineCount, ';', 1);
+		PintoolInput::CountCharacter(values, lineCount, ';', 1, 1);
 		double consumptionValue;
 		PintoolInput::ProcessConsumptionValue(values, lineCount, consumptionValue);
 		consumptionProfile.SetConsumptionValue(consumptionType, errorCat, consumptionValue);
@@ -260,7 +262,7 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 void PintoolInput::SeparateStringOn(const std::string& inputLine, const size_t lineCount, std::string& fistPart, std::string& secondPart, const char separator) {
 	const size_t pos = inputLine.find(separator);
 	if (pos == std::string::npos) {
-		std::cout << ("ApproxSS Error: malformed configuration. Missing: \"" + std::to_string(separator) + "\". Line: " + std::to_string(lineCount) + ". Found: \"" + inputLine +  "\".") << std::endl;
+		std::cout << "ApproxSS Error: malformed configuration. Missing: \"" << separator << "\". Line: " << lineCount << ". Found: \"" << inputLine <<  "\"." << std::endl;
 		std::exit(EXIT_FAILURE);
 	}
 

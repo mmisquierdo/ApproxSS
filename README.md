@@ -43,15 +43,15 @@ In order to try to reduce as much as possible the overhead imposed by using Appr
 
 2. MULTIPLE_BER_CONFIGURATION: When enabled, allows every injector configuration to have multiple BERs per error category. The exchange between them is performed by the _next_period()_ instrumentation marker, which advances the BER indices.
 
-3. MULTIPLE__BER_ELEMENT: TO WRITE
+3. MULTIPLE_BER_ELEMENT: When enabled, allows that every bit of an element to have an indidivual BER. This option is NOT compatible with GRANULAR_FAULT_INJECTION and DISTANCE_BASED_FAULT_INJECTOR.
 
 4. LOG_FAULTS: When enabled, allows bit-level accounting error injected per category and period. Can be activated as a debugging measure or for other purposes. Writes that are overwritten before being read are not injected and, therefore, are not accounted.
 
 5. ENABLE_PASSIVE_INJECTION: When enabled, allows permanent error injection over time. This attempts to replicate the behavior of errors caused by wear-out errors, caused by unsafe hold opearations, due to extended data refresh interval DRAM, for example. **NOTE: This type of error is applied once every period during the first read, thus may have limited fidelity**.
 
-6. OVERCHARGE_BER: TO WRITE
+6. OVERCHARGE_BER: When enabled, allows the stacking of passive BERs with themselves and write BERs for elements accessed. This can reduce the overhead of iterating between those BERs individually for injection, specially when multiple periods have passed. This option requires ENABLE_PASSIVE_INJECTION and is NOT compatible with MULTIPLE_BER_ELEMENT, DISTANCE_BASED_FAULT_INJECTOR, and/or LOG_FAULTS.
 
-7. OVERCHARGE_FLIP_BACK: When enabled, adds safety to passive error injections. Under some configurations, many periods passive BERs may be stacked in order to speed up injection. This may cause the error rate to exceed 1.0 and the simulator to overlook injections that could otherwise happen. Thus, this option adds extra checks to make sure these errors are better simulated.
+7. OVERCHARGE_FLIP_BACK: When enabled, adds safety to OVERCHARGE_BER. Under some configurations, many periods BERs may be stacked in order to speed up injection. This may cause the error rate to exceed 1.0 and the simulator to overlook injections that could otherwise happen. Thus, this option adds extra checks and steps to make sure these errors are better simulated.
 
 8. NARROW_ACCESS_INSTRUMENTATION: By default, due to Pin limitations that make it impossible for it to know the effective address of the accesses made by instructions at instrumentation time, all memory accesses made by the target application are instrumented. This forces the ApproxSS to check if they belong to some approximate buffer every time are executed, causing overhead. When enabled, allows accesses to be instrumented only at user-specified times. In this case, access instrumentation is initially disabled by default. It is only enabled when any instrumentation marker is found by the instrumentator and can be disabled again with a call of the _disable_access_instrumentation()_ marker. However, this directive should be used with extreme care, as it has the potential to prevent instrumentation of approximate buffer accesses, as instructions are parsed only during the first time they are executed.
 

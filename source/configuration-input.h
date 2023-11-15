@@ -73,7 +73,7 @@ namespace PintoolInput {
 	size_t ErrorCategoryToConsumptionFieldCode(const size_t errorCat); //eu me odeio por essa gambiarra
 	std::string GetExpectedConsumptionFieldsNames(size_t expectedFieldCodes);
 
-	size_t CountCharacter(const std::string& values, const size_t lineCount, const char character = ';', const size_t maxSemiColonCount = std::numeric_limits<size_t>::max());
+	size_t CountCharacter(const std::string& values, const size_t lineCount, const char character = ';', const size_t minCharCount = 0, const size_t maxCharCount = std::numeric_limits<size_t>::max());
 
 	void ProcessBerConfiguration(const std::string& values, const size_t lineCount, const size_t bitDepth, std::unique_ptr<double[]>& toAtrib);
 	void ProcessBerConfiguration(const std::string& value,  const size_t lineCount, std::pair<double, double>& toAtrib);

@@ -442,7 +442,7 @@ namespace PintoolOutput {
 		std::cout << "PINTOOL CONFIGURATIONS:" << std::endl;
 		std::cout << "\tFault Injector: " <<
 		#if DISTANCE_BASED_FAULT_INJECTOR
-			"Distance Based"
+			"Distance-Based"
 		#elif GRANULAR_FAULT_INJECTOR
 			"Granular"
 		#else
@@ -460,10 +460,12 @@ namespace PintoolOutput {
 
 		PintoolOutput::PrintEnabledOrDisabled("Passive Injection", ENABLE_PASSIVE_INJECTION);
 		PintoolOutput::PrintEnabledOrDisabled("Multiple Active Buffers", MULTIPLE_ACTIVE_BUFFERS);
-		PintoolOutput::PrintEnabledOrDisabled("Multiple BERs", MULTIPLE_BER_CONFIGURATION);
+		PintoolOutput::PrintEnabledOrDisabled("Multiple BER Configuration", MULTIPLE_BER_CONFIGURATION);
+		PintoolOutput::PrintEnabledOrDisabled("Multiple BER Element", MULTIPLE_BER_ELEMENT);
 		PintoolOutput::PrintEnabledOrDisabled("Fault Logging", LOG_FAULTS);
 		PintoolOutput::PrintEnabledOrDisabled("Narrow Access Instrumentation", NARROW_ACCESS_INSTRUMENTATION);
-		PintoolOutput::PrintEnabledOrDisabled("Overload flip-back", OVERCHARGE_FLIP_BACK);
+		PintoolOutput::PrintEnabledOrDisabled("Overcharge BERs", OVERCHARGE_FLIP_BACK);
+		PintoolOutput::PrintEnabledOrDisabled("Overcharge flip-back", OVERCHARGE_FLIP_BACK);
 
 		std::cout << std::string(50, '#') << std::endl;
 	}

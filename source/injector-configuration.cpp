@@ -74,9 +74,9 @@ InjectionConfigurationReference::InjectionConfigurationReference() : InjectionCo
 
 std::string InjectionConfigurationReference::BerToString(const std::unique_ptr<double[]>& ber) const {
 	std::string s;
-	if (ber) {
+	if (ber.get()) {
 		for (size_t i = 0; i < (this->GetBitDepth() - 1); ++i) {
-			s += std::to_string(ber[i]);
+			s += std::to_string(ber[i]) + ", ";
 		}
 		s += std::to_string(ber[this->GetBitDepth()-1]);
 	} else {
@@ -168,13 +168,13 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 /////////////////////////////////////////////////////////////////////////
 
 #if MULTIPLE_BER_CONFIGURATION
-	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(), m_reference(reference) {
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(reference), m_reference(reference) {
 		this->m_creationPeriod = g_currentPeriod;
 		this->UpdateBers();
 	}
 #else
-	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase() {
-		for (size_t i = 0; i << ErrorCategory::Size; ++i) {
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(reference) {
+		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_bers[i] = reference.GetBer(i);
 			this->ReviseShouldGoOn(i);
 		}
