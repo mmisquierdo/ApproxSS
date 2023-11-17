@@ -9,8 +9,15 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 	void FaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
 		++g_injectionCalls;
 		bool isFaultInjected = false;
+
+		#if LS_BIT_DROPPING
+			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
+			constexpr size_t countStart = 1;
+		#else
+			constexpr size_t countStart = 0;
+		#endif
 		
-		for (size_t bitCount = 0; bitCount < this->GetBitDepth(); ++bitCount) {
+		for (size_t bitCount = countStart; bitCount < this->GetBitDepth(); ++bitCount) {
 			const double randomProbability = FaultInjector::occurrenceDistribution(FaultInjector::generator);
 
 			if (randomProbability < ber) {
@@ -32,8 +39,15 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 	void FaultInjector::InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
 		++g_injectionCalls;
 		bool isFaultInjected = false;
+
+		#if LS_BIT_DROPPING
+			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
+			constexpr size_t countStart = 1;
+		#else
+			constexpr size_t countStart = 0;
+		#endif
 		
-		for (size_t bitCount = 0; bitCount < this->GetBitDepth(); ++bitCount) {
+		for (size_t bitCount = countStart; bitCount < this->GetBitDepth(); ++bitCount) {
 			const double randomProbability = FaultInjector::occurrenceDistribution(FaultInjector::generator);
 
 			if (randomProbability < ber[bitCount]) {
