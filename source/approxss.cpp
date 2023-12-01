@@ -529,7 +529,7 @@ namespace PintoolOutput {
 
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 				std::string errorCat = ErrorCategoryNames[i];
-				StringHandling::toLower(errorCat);
+				//StringHandling::toLower(errorCat);
 
 				g_accessOutputLog << "Total " << errorCat << " Errors Injected: " << totalTargetInjections[i] << std::endl;
 				totalInjections += totalTargetInjections[i];
