@@ -22,15 +22,15 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
 	m_creationPeriod(creationPeriod),
 	m_isActive(true),
-		
-	m_periodLog(creationPeriod, injectorCfg),
-	m_bufferLogs(),
 
 	#if DISTANCE_BASED_FAULT_INJECTOR
-		m_faultInjector(injectorCfg, dataSizeInBytes)
+		m_faultInjector(injectorCfg, dataSizeInBytes),
 	#else
-		m_faultInjector(injectorCfg)
+		m_faultInjector(injectorCfg),
 	#endif
+
+	m_periodLog(creationPeriod, m_faultInjector),
+	m_bufferLogs()
 {
 
 	if (this->m_faultInjector.GetBitDepth() > (this->m_dataSizeInBytes * BYTE_SIZE)) {

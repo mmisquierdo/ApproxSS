@@ -65,9 +65,6 @@ class ApproximateBuffer {
 		uint64_t m_creationPeriod;
 		bool m_isActive;
 
-		PeriodLog m_periodLog;
-		BufferLogs m_bufferLogs;
-
 		#if DISTANCE_BASED_FAULT_INJECTOR
 			DistanceBasedFaultInjector m_faultInjector;
 		#elif GRANULAR_FAULT_INJECTOR
@@ -75,6 +72,9 @@ class ApproximateBuffer {
 		#else
 			FaultInjector m_faultInjector;
 		#endif
+
+		PeriodLog m_periodLog;
+		BufferLogs m_bufferLogs;
 
 		#if ENABLE_PASSIVE_INJECTION
 			#if !DISTANCE_BASED_FAULT_INJECTOR

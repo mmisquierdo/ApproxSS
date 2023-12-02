@@ -35,13 +35,20 @@ extern uint64_t g_currentPeriod;
 	};
 //#endif
 
+class InjectionConfigurationReference;
+
 class InjectionConfigurationBase {
-	private:
+	protected:
 		int64_t m_configurationId;
 		size_t m_bitDepth;
 
+		//CHANGE InjectionConfigurationLocal initializer if you add members	
+
 	public:
-		InjectionConfigurationBase();
+		InjectionConfigurationBase(const InjectionConfigurationReference& other);
+		InjectionConfigurationBase(const InjectionConfigurationBase& other);
+		InjectionConfigurationBase();	
+
 
 		int64_t GetConfigurationId() const;
 		size_t GetBitDepth() const;

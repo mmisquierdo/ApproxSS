@@ -21,10 +21,22 @@ ErrorType InjectionConfigurationBase::GetZeroBerValue() {
 	#endif
 }
 
+InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurationReference& other) {
+	this->m_configurationId = other.GetConfigurationId();
+	this->m_bitDepth = other.GetBitDepth();
+}
+
+InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurationBase& other) {
+	this->m_configurationId = other.GetConfigurationId();
+	this->m_bitDepth = other.GetBitDepth();
+}
+
+
 InjectionConfigurationBase::InjectionConfigurationBase() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;
 }
+
 
 int64_t InjectionConfigurationBase::GetConfigurationId() const {
 	return this->m_configurationId;
@@ -168,12 +180,18 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 /////////////////////////////////////////////////////////////////////////
 
 #if MULTIPLE_BER_CONFIGURATION
-	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(reference), m_reference(reference) {
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : /*InjectionConfigurationBase(reference),*/ m_reference(reference) {
+		this->m_configurationId = reference.GetConfigurationId();
+		this->m_bitDepth = reference.GetBitDepth();
+
 		this->m_creationPeriod = g_currentPeriod;
 		this->UpdateBers();
 	}
 #else
-	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) : InjectionConfigurationBase(reference) {
+	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) /*: InjectionConfigurationBase(reference)*/ {
+		this->m_configurationId = reference.GetConfigurationId(); //TODO: fix this shit! for some reason it would only call the InjectionConfigurationBase default constructor, why?????
+		this->m_bitDepth = reference.GetBitDepth();
+		
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_bers[i] = reference.GetBer(i);
 			this->ReviseShouldGoOn(i);
