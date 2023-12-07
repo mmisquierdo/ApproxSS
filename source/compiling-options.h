@@ -58,7 +58,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef LS_BIT_DROPPING //premilinary version. take it as input from injector configuration
-	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && false)
+	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && true)
 #endif
 //USER-DEFINED END
 

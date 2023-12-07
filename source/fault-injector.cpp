@@ -11,6 +11,11 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 		bool isFaultInjected = false;
 
 		#if LS_BIT_DROPPING
+			if (toBackup) {
+				toBackup->BackupReadData(data);
+				isFaultInjected = true;
+			}
+
 			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
 			constexpr size_t countStart = 1;
 		#else
@@ -41,6 +46,11 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 		bool isFaultInjected = false;
 
 		#if LS_BIT_DROPPING
+			if (toBackup) {
+				toBackup->BackupReadData(data);
+				isFaultInjected = true;
+			}
+
 			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
 			constexpr size_t countStart = 1;
 		#else
