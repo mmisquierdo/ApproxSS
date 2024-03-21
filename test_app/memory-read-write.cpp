@@ -44,23 +44,21 @@ int main() {
 	
 	std::cout << std::string(20, '*') << std::endl;
 	std::cout << std::endl << "INICIALIZANDO VETOR DE " << SIZE << " CASAS:" << std::endl;
-
 	setArray(begin_array, 0);
 	printArray(begin_array);
-	setArray(begin_array, 0);
 	
 	start_level();
-	next_period();
-	next_period();
 	std::cout << std::string(20, '*') << std::endl;
 	std::cout << "LEITURA APROXIMADA" << std::endl;
 	printArray(begin_array);
 	std::cout << std::endl;
-	printArray(begin_array);
 	end_level();
 
+	std::cout << std::string(20, '*') << std::endl;
+	std::cout << std::endl << "LEITURA PRECISA APÓS APROXIMADA" << std::endl;
+	printArray(begin_array);
+
 	start_level();
-	next_period();
 	std::cout << std::string(20, '*') << std::endl;
 	std::cout << "ESCRITA APROXIMADA" << std::endl;
 	setArray(begin_array, 0);
@@ -68,7 +66,6 @@ int main() {
 	printArray(begin_array);
 
 	start_level();
-	next_period();
 	std::cout << std::string(20, '*') << std::endl;
 	std::cout << "ESCRITA APROXIMADA + LEITURA APROXIMADA" << std::endl;
 	setArray(begin_array, 0);

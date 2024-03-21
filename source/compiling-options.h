@@ -38,7 +38,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef MULTIPLE_BER_ELEMENT
-	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && true)
+	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && false)
 #endif
 
 #ifndef ENABLE_PASSIVE_INJECTION
@@ -57,8 +57,8 @@ constexpr size_t BYTE_SIZE = 8;
 	#define LOG_FAULTS true
 #endif
 
-#ifndef LS_BIT_DROPPING //premilinary version. take it as input from injector configuration
-	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && true)
+#ifndef LS_BIT_DROPPING //premilinary version. TODO: take it as input from injector configuration
+	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && false)
 #endif
 //USER-DEFINED END
 

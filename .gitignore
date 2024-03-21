@@ -1,0 +1,3 @@
+test_app/memory-read-write
+source/obj-intel64/
+test_app/*.log
