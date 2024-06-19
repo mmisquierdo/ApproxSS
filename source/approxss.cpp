@@ -312,19 +312,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IARG_THREAD_ID,
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IARG_THREAD_ID,
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered,
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IARG_THREAD_ID,
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -337,19 +337,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IARG_THREAD_ID,
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IARG_THREAD_ID,
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered,
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IARG_THREAD_ID,
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
