@@ -72,8 +72,8 @@ ConsumptionProfileMap 		g_consumptionProfiles;
 /* ==================================================================== */
 
 namespace AccessHandler {
-	VOID CheckAndForward(const THREADID threadId, void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator approxBuffer = g_activeBuffers.find(Range{accessedAddress, accessedAddress});
@@ -86,28 +86,28 @@ namespace AccessHandler {
 			}
 		#endif
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	// memory read
-	VOID HandleMemoryReadSIMD(const THREADID threadId, uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(threadId, &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID HandleMemoryRead(const THREADID threadId, uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(threadId, &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
 	// memory write
-	VOID HandleMemoryWriteSIMD(const THREADID threadId, uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(threadId, &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWriteSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID HandleMemoryWrite(const THREADID threadId, uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(threadId, &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWrite(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID CheckAndForwardScattered(const THREADID threadId, void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo, const size_t errorCat) {
+	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo, const size_t errorCat) {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
@@ -115,7 +115,7 @@ namespace AccessHandler {
 		uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
 		ChosenTermApproximateBuffer* bufferP;
 
-		PIN_GetLock(&g_pinLock, threadId);
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 		
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator approxBuffer = g_activeBuffers.find(Range{accessedAddress, accessedAddress});
@@ -128,7 +128,7 @@ namespace AccessHandler {
 			}
 		#endif
 			 else {
-				PIN_ReleaseLock(&g_pinLock);
+				IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 				return;
 			}
 
@@ -139,15 +139,15 @@ namespace AccessHandler {
 			(*bufferP.*function)(accessedAddress, shouldInject);
 		}
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID HandleMemoryReadScattered(const THREADID threadId, IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(threadId, &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe, memOpInfo, ErrorCategory::Read);
+	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe, memOpInfo, ErrorCategory::Read);
 	}
 
-	VOID HandleMemoryWriteScattered(const THREADID threadId, IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(threadId, &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe, memOpInfo, ErrorCategory::Write);
+	VOID HandleMemoryWriteScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe, memOpInfo, ErrorCategory::Write);
 	}
 }
 
@@ -157,52 +157,52 @@ namespace AccessHandler {
 
 namespace PintoolControl {
 	//i had to add the next two because i needed a simple and direct way of enabling and disabling the error injection
-	VOID enable_global_injection(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID enable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		g_isGlobalInjectionEnabled = true;
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_global_injection(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID disable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		g_isGlobalInjectionEnabled = false;
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_access_instrumentation(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID disable_access_instrumentation(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		SET_ACCESS_INSTRUMENTATION_STATUS(false)
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	//effectively enables the error injection 
-	VOID start_level(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID start_level(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		++g_level;
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	//not a boolean to allow layers (so functions that call each other don't disable the injection)
 
 	//effectively disables the error injection
-	VOID end_level(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID end_level(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		--g_level;
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID next_period(const THREADID threadId) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID next_period(IF_PIN_LOCKED(const THREADID threadId)) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		++g_currentPeriod;
 		#if MULTIPLE_ACTIVE_BUFFERS
@@ -215,11 +215,11 @@ namespace PintoolControl {
 			}
 		#endif
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID add_approx(const THREADID threadId, uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		const Range range = Range(start_address, end_address);
 
@@ -264,11 +264,11 @@ namespace PintoolControl {
 			std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
 		}
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID remove_approx(const THREADID threadId, uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
-		PIN_GetLock(&g_pinLock, threadId);
+	VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
 
 		const Range range = Range(start_address, end_address);
 
@@ -288,7 +288,7 @@ namespace PintoolControl {
 			std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
 		}
 
-		PIN_ReleaseLock(&g_pinLock);
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 }
 
@@ -312,19 +312,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IARG_THREAD_ID,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IARG_THREAD_ID,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IARG_THREAD_ID,
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -337,19 +337,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IARG_THREAD_ID,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IARG_THREAD_ID,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IARG_THREAD_ID,
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -372,7 +372,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("start_level") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::start_level,  
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 							IARG_END);
 			RTN_Close(rtn);
@@ -383,7 +383,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("end_level") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::end_level,  
-							IARG_THREAD_ID, IARG_END);
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID) IARG_END);
 			RTN_Close(rtn);
 			SET_ACCESS_INSTRUMENTATION_STATUS(true)
 			return;
@@ -392,7 +392,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("next_period") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::next_period, 
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
 							IARG_END);
@@ -404,7 +404,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("add_approx") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::add_approx, 
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -419,7 +419,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("remove_approx") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::remove_approx,  
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2, 
@@ -432,7 +432,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("enable_global_injection") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::enable_global_injection, 
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -446,7 +446,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("disable_global_injection") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_global_injection,  
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -462,7 +462,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("disable_access_instrumentation") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation,  
-							IARG_THREAD_ID,
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,

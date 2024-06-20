@@ -60,7 +60,19 @@ constexpr size_t BYTE_SIZE = 8;
 #ifndef LS_BIT_DROPPING //premilinary version. TODO: take it as input from injector configuration
 	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && false)
 #endif
+
+#ifndef PIN_LOCKED
+	#define PIN_LOCKED true
+#endif
 //USER-DEFINED END
+
+#if PIN_LOCKED
+	#define IF_PIN_LOCKED(X) X
+	#define IF_PIN_LOCKED_COMMA(X) X,
+#else
+	#define IF_PIN_LOCKED(X)
+	#define IF_PIN_LOCKED_COMMA(X)
+#endif
 
 
 #if !DEFAULT_FAULT_INJECTOR && !GRANULAR_FAULT_INJECTOR && !DISTANCE_BASED_FAULT_INJECTOR
