@@ -17,13 +17,12 @@
 #include "configuration-input.h"
 #include "compiling-options.h"
 
-bool g_isGlobalInjectionEnabled = true;
-int g_level = 0;
-uint64_t g_injectionCalls = 0;
+//bool g_isGlobalInjectionEnabled = true;
+//int g_level = 0;
+uint64_t g_injectionCalls = 0; //NOTE: possible race condition, but I don't care
 uint64_t g_currentPeriod = 0;
 
 PIN_LOCK g_pinLock;
-
 
 #if NARROW_ACCESS_INSTRUMENTATION
 	bool IsInstrumentationActive = false;
@@ -33,9 +32,6 @@ PIN_LOCK g_pinLock;
 	#define ASSERT_ACCESS_INSTRUMENTATION_ACTIVE()
 	#define SET_ACCESS_INSTRUMENTATION_STATUS(stat)
 #endif
-
-std::ofstream g_accessOutputLog;
-std::ofstream g_energyConsumptionOutputLog;
 
 ///////////////////////////////////////////////////////
 
@@ -48,8 +44,6 @@ std::ofstream g_energyConsumptionOutputLog;
 typedef std::tuple<uint8_t const *, uint8_t const *, int64_t, int64_t, size_t> GeneralBufferRecord; //<Range, BufferId, ConfigurationId, dataSizeInBytes>
 typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximateBuffer>> GeneralBuffers; 
 
-GeneralBuffers g_generalBuffers;
-
 #if MULTIPLE_ACTIVE_BUFFERS
 	struct RangeCompare {
 		//overlapping ranges are considered equivalent
@@ -57,15 +51,30 @@ GeneralBuffers g_generalBuffers;
 			return lhv.m_finalAddress <= rhv.m_initialAddress;
 		} 
 	};
-
 	typedef std::map<Range, ChosenTermApproximateBuffer*, RangeCompare> ActiveBuffers;
-	ActiveBuffers g_activeBuffers;
-#else
-	ChosenTermApproximateBuffer* g_activeBuffer = nullptr;
 #endif
 
-InjectorConfigurationMap	g_injectorConfigurations;
-ConsumptionProfileMap 		g_consumptionProfiles;
+class ThreadControl {
+	int64_t m_level;
+	bool m_injectionEnabled;
+
+	#if MULTIPLE_ACTIVE_BUFFERS
+		ActiveBuffers m_activeBuffers;
+	#else
+		ChosenTermApproximateBuffer* m_activeBuffer;
+	#endif
+
+	ThreadControl() {
+		this->m_level = 0;
+		this->m_injectionEnabled = true;
+
+		#if MULTIPLE_ACTIVE_BUFFERS
+			this->m_activeBuffers{};
+		#else
+			this->m_activeBuffer = nullptr;
+		#endif
+	}	
+};
 
 /* ====================================================================	*/
 /* Inspect each memory read and write									*/
@@ -155,7 +164,12 @@ namespace AccessHandler {
 /* ApproxSS Control														*/
 /* ==================================================================== */
 
+InjectorConfigurationMap	g_injectorConfigurations; //todo: place them into the PintoolControl namespace eventually
+ConsumptionProfileMap 		g_consumptionProfiles;
+
 namespace PintoolControl {
+	GeneralBuffers 				generalBuffers;
+
 	//i had to add the next two because i needed a simple and direct way of enabling and disabling the error injection
 	VOID enable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, threadId);)
@@ -231,9 +245,9 @@ namespace PintoolControl {
 		#endif
 		{
 			const GeneralBufferRecord generalBufferKey = std::make_tuple(range.m_initialAddress, range.m_finalAddress, bufferId, configurationId, dataSizeInBytes);
-			const GeneralBuffers::const_iterator lbGeneral = g_generalBuffers.lower_bound(generalBufferKey);
+			const GeneralBuffers::const_iterator lbGeneral = PintoolControl::generalBuffers.lower_bound(generalBufferKey);
 
-			if ((lbGeneral != g_generalBuffers.cend()) && !(g_generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
+			if ((lbGeneral != PintoolControl::generalBuffers.cend()) && !(PintoolControl::generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
 				#if MULTIPLE_ACTIVE_BUFFERS
 					ChosenTermApproximateBuffer* const approxBuffer = lbGeneral->second.get();
 					approxBuffer->ReactivateBuffer(g_currentPeriod);
@@ -258,7 +272,7 @@ namespace PintoolControl {
 					g_activeBuffer = approxBuffer;
 				#endif
 
-				g_generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
+				PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
 			}
 		} else {
 			std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
@@ -480,9 +494,21 @@ namespace TargetInstrumentation {
 			return;
 		}
 	}
+
+	VOID ThreadStart(const THREADID threadId, CONTEXT * const ctxt, const INT32 flags, VOID * const v) {
+		std::cout << "Thread STARTED: " << threadId  << std::endl;
+	}
+	
+	// This function is called when the thread exits
+	VOID ThreadFini(const THREADID threadId, CONTEXT * const ctxt, const INT32 code, VOID * const v) {
+		std::cout << "Thread ENDED: " << threadId << std::endl;
+	}
 }
 
 namespace PintoolOutput {
+	std::ofstream accessLog;
+	std::ofstream energyConsumptionLog;
+
 	void PrintEnabledOrDisabled(const char* const message, const bool enabled) {
 		std::cout << "\t" << message << ": ";
 		if (enabled) {
@@ -524,12 +550,13 @@ namespace PintoolOutput {
 		PintoolOutput::PrintEnabledOrDisabled("Overcharge BERs", OVERCHARGE_FLIP_BACK);
 		PintoolOutput::PrintEnabledOrDisabled("Overcharge flip-back", OVERCHARGE_FLIP_BACK);
 		PintoolOutput::PrintEnabledOrDisabled("Least significant bits dropping", LS_BIT_DROPPING);
+		PintoolOutput::PrintEnabledOrDisabled("Multithreading global shared mutex", PIN_LOCKED)
 
 		std::cout << std::string(50, '#') << std::endl;
 	}
 
 	void DeleteDataEstructures() {
-		g_generalBuffers.clear();
+		PintoolControl::generalBuffers.clear();
 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			g_activeBuffers.clear();
@@ -559,8 +586,8 @@ namespace PintoolOutput {
 	}
 
 	VOID WriteAccessLog() {
-		g_accessOutputLog << "Final Level: " << g_level << std::endl;
-		g_accessOutputLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
+		PintoolOutput::accessLog << "Final Level: " << g_level << std::endl;
+		PintoolOutput::accessLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
 		
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
@@ -568,44 +595,44 @@ namespace PintoolOutput {
 		std::array<uint64_t, AccessTypes::Size> totalTargetAccessesBytes;
 		std::fill_n(totalTargetAccessesBytes.data(), AccessTypes::Size, 0);
 
-		for (const auto& [_, approxBuffer] : g_generalBuffers) { 
-			approxBuffer->WriteAccessLogToFile(g_accessOutputLog, totalTargetAccessesBytes, totalTargetInjections);
+		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
+			approxBuffer->WriteAccessLogToFile(PintoolOutput::accessLog, totalTargetAccessesBytes, totalTargetInjections);
 		}
 
 		uint64_t totalAccesses = 0;
-		g_accessOutputLog << std::endl;
+		PintoolOutput::accessLog << std::endl;
 		for (size_t i = 0; i < AccessTypes::Size; ++i) {
-			g_accessOutputLog << "Total Software Implementation " << AccessTypesNames[i] << " Bytes/Bits: " << totalTargetAccessesBytes[i] << " / " << (totalTargetAccessesBytes[i] * BYTE_SIZE) << std::endl;
+			PintoolOutput::accessLog << "Total Software Implementation " << AccessTypesNames[i] << " Bytes/Bits: " << totalTargetAccessesBytes[i] << " / " << (totalTargetAccessesBytes[i] * BYTE_SIZE) << std::endl;
 			totalAccesses += totalTargetAccessesBytes[i];
 		}
-		g_accessOutputLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
+		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
 
 		#if LOG_FAULTS
 			uint64_t totalInjections = 0;
-			g_accessOutputLog << std::endl;
+			PintoolOutput::accessLog << std::endl;
 
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 				std::string errorCat = ErrorCategoryNames[i];
 				//StringHandling::toLower(errorCat);
 
-				g_accessOutputLog << "Total " << errorCat << " Errors Injected: " << totalTargetInjections[i] << std::endl;
+				PintoolOutput::accessLog << "Total " << errorCat << " Errors Injected: " << totalTargetInjections[i] << std::endl;
 				totalInjections += totalTargetInjections[i];
 			}
 
-			g_accessOutputLog << "Total Errors Injected: " << (totalInjections) << std::endl;
+			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
 		
-		g_accessOutputLog.close();
+		PintoolOutput::accessLog.close();
 	}
 
 	VOID WriteEnergyLog() {
 		std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> totalTargetEnergy;
 		std::fill_n(totalTargetEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, 0);
 
-		g_energyConsumptionOutputLog.setf(std::ios::fixed);
-		g_energyConsumptionOutputLog.precision(2);
+		PintoolOutput::energyConsumptionLog.setf(std::ios::fixed);
+		PintoolOutput::energyConsumptionLog.precision(2);
 
-		for (const auto& [_, approxBuffer] : g_generalBuffers) { 
+		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
 			const int64_t configurationId = approxBuffer->GetConfigurationId();
 			const ConsumptionProfileMap::const_iterator profileIt = g_consumptionProfiles.find(configurationId);
 
@@ -616,14 +643,14 @@ namespace PintoolOutput {
 
 			const ConsumptionProfile& respectiveConsumptionProfile = *(profileIt->second.get());
 
-			approxBuffer->WriteEnergyLogToFile(g_energyConsumptionOutputLog, totalTargetEnergy, respectiveConsumptionProfile);
+			approxBuffer->WriteEnergyLogToFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, respectiveConsumptionProfile);
 		}
 
-		g_energyConsumptionOutputLog << std::endl << "TARGET APPLICATION TOTAL ENERGY CONSUMPTION" << std::endl;
-		WriteEnergyConsumptionToLogFile(g_energyConsumptionOutputLog, totalTargetEnergy, false, false, "	");
-		WriteEnergyConsumptionSavingsToLogFile(g_energyConsumptionOutputLog, totalTargetEnergy, false, false, "	");
+		PintoolOutput::energyConsumptionLog << std::endl << "TARGET APPLICATION TOTAL ENERGY CONSUMPTION" << std::endl;
+		WriteEnergyConsumptionToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
+		WriteEnergyConsumptionSavingsToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
 
-		g_accessOutputLog.close();
+		PintoolOutput::accessLog.close();
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
@@ -683,20 +710,26 @@ int main(const int argc, char* argv[]) {
 
 	PintoolOutput::PrintPintoolConfiguration();
 	PintoolInput::ProcessInjectorConfiguration(InjectorConfigurationFile.Value());
-	PintoolOutput::CreateOutputLog(g_accessOutputLog, AccessOutputFile.Value(), "access.log");
+	PintoolOutput::CreateOutputLog(PintoolOutput::accessLog, AccessOutputFile.Value(), "access.log");
 
 	PintoolInput::ProcessEnergyProfile(EnergyProfileFile.Value());
 
 	if (!g_consumptionProfiles.empty()) {
-		PintoolOutput::CreateOutputLog(g_energyConsumptionOutputLog, EnergyConsumptionOutputFile.Value(), "energyConsumpion.log");
+		PintoolOutput::CreateOutputLog(PintoolOutput::energyConsumptionLog, EnergyConsumptionOutputFile.Value(), "energyConsumpion.log");
 	}
 
 	// Register Routine to be called to instrument rtn
-	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, 0);
+	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, nullptr);
 
-	INS_AddInstrumentFunction(TargetInstrumentation::Instruction, 0);
+	// Register ThreadStart to be called when a thread starts.
+    PIN_AddThreadStartFunction(TargetInstrumentation::ThreadStart, nullptr);
+ 
+    // Register Fini to be called when thread exits.
+    PIN_AddThreadFiniFunction(TargetInstrumentation::ThreadFini, nullptr);
 
-	PIN_AddFiniFunction(PintoolOutput::Fini, 0);
+	INS_AddInstrumentFunction(TargetInstrumentation::Instruction, nullptr);
+
+	PIN_AddFiniFunction(PintoolOutput::Fini, nullptr);
 
 	// Never returns
 	PIN_StartProgram();
