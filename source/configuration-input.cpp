@@ -1,4 +1,5 @@
 #include "configuration-input.h"
+#include "pin.H"
 
 // trim from start (in place)
 void StringHandling::lTrim(std::string& s) {
@@ -90,23 +91,22 @@ size_t PintoolInput::AssertConsumptionFieldCode(const std::string& s, const size
 	if (receivedFieldCode & expectedFieldCodes) { //yes, a bitwise AND, it's dealing with bitfields
 		return receivedFieldCode;
 	} else {
-		std::cout << "ApproxSS Error: malformed profile. Expected: " << GetExpectedConsumptionFieldsNames(expectedFieldCodes) << ". Found: \"" << s << "\"." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: malformed profile. Expected: " << GetExpectedConsumptionFieldsNames(expectedFieldCodes) << ". Found: \"" << s << "\"." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 }
-
 
 size_t PintoolInput::CountCharacter(const std::string& values, const size_t lineCount, const char character /*= ';'*/, const size_t minCharCount/*= 0*/, const size_t maxCharCount /*= std::numeric_limits<size_t>::max()*/) {
 	const size_t count = static_cast<size_t>(std::count(values.begin(), values.end(), character));
 
 	if (count < minCharCount) {
-		std::cout << "ApproxSS Error: Found less separators (\"" << character << "\") than expected. Line: " << lineCount << ". Found : " << count << ". Minimum: " << minCharCount << "." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Found less separators (\"" << character << "\") than expected. Line: " << lineCount << ". Found : " << count << ". Minimum: " << minCharCount << "." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	} 
 
 	if (count > maxCharCount) {
-		std::cout << "ApproxSS Error: Found more separators (\"" << character << "\") than supported. Line: " << lineCount << ". Found: " << count << ". Maximum: " << maxCharCount << "." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Found more separators (\"" << character << "\") than supported. Line: " << lineCount << ". Found: " << count << ". Maximum: " << maxCharCount << "." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	return count;
@@ -125,16 +125,16 @@ void PintoolInput::ProcessBerConfiguration(const std::string& value, const size_
 void PintoolInput::ProcessBerConfiguration(const std::string& value, const size_t lineCount, double& toAtrib) {
 	toAtrib = std::stod(value);
 	if (toAtrib < 0 || toAtrib >= 1) {
-		std::cout << ("ApproxSS Error: Bit Error Rates (BERs) should be present in [0.0, 1.0). Found: " + std::to_string(toAtrib) + ". Line: " + std::to_string(lineCount) + ".") << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Bit Error Rates (BERs) should be present in [0.0, 1.0). Found: " << toAtrib << ". Line: " << lineCount << "." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	} 
 }
 
 void PintoolInput::ProcessConsumptionValue(const std::string& value, const size_t lineCount, double& toAtrib) {
 	toAtrib = std::stod(value);
 	if (toAtrib < 0) {
-		std::cout << "ApproxSS Error: energy consumption values should not be negative. Found: " << toAtrib << ". Line: " << lineCount << "." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: energy consumption values should not be negative. Found: " << toAtrib << ". Line: " << lineCount << "." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	} 
 }
 
@@ -155,8 +155,8 @@ void PintoolInput::ProcessBerConfiguration(const std::string& values, const size
 	}
 
 	if (berCount != bitDepth) {
-		std::cout << "ApproxSS Error: the amount of element Bit Error Rates (BERs) differs from the set bit depth (in an unsupported manner). Found: " << berCount << " instead of " << bitDepth << ". Line: " << lineCount << "." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: the amount of element Bit Error Rates (BERs) differs from the set bit depth (in an unsupported manner). Found: " << berCount << " instead of " << bitDepth << ". Line: " << lineCount << "." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	toAtrib = std::make_unique<double[]>(bitDepth);
@@ -233,8 +233,8 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 	#if MULTIPLE_BER_CONFIGURATION
 		const size_t semiColonCount = PintoolInput::CountCharacter(values, lineCount, ';', 1);
 		if (semiColonCount != respectiveInjectorCfg.GetBerCount(errorCat)) {
-			std::cout << "ApproxSS Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 
-			std::exit(EXIT_FAILURE);
+			std::cerr << "ApproxSS Error: malformed energy consumption profile. Configuration " << consumptionProfile.GetConfigurationId() << " must have the same amount of energy consumption values as BERs. Found: " << semiColonCount << " semicolons. Expected: " << respectiveInjectorCfg.GetBerCount(errorCat) << "." << std::endl; 
+			PIN_ExitProcess(EXIT_FAILURE);
 		}
 
 		consumptionProfile.SetConsumptionValueCount(consumptionType, errorCat, semiColonCount);
@@ -262,8 +262,8 @@ void PintoolInput::ProcessConsumptionValue(const std::string& values, const size
 void PintoolInput::SeparateStringOn(const std::string& inputLine, const size_t lineCount, std::string& fistPart, std::string& secondPart, const char separator) {
 	const size_t pos = inputLine.find(separator);
 	if (pos == std::string::npos) {
-		std::cout << "ApproxSS Error: malformed configuration. Missing: \"" << separator << "\". Line: " << lineCount << ". Found: \"" << inputLine <<  "\"." << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: malformed configuration. Missing: \"" << separator << "\". Line: " << lineCount << ". Found: \"" << inputLine <<  "\"." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	fistPart 	= StringHandling::trim(inputLine.substr(0, pos));
@@ -288,8 +288,8 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 	std::ifstream inputFile(configurationFilename);
 
 	if (!inputFile) {
-		std::cout << ("ApproxSS Error: Unable to open injector configuration file.") << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Unable to open injector configuration file." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	std::string line;
@@ -327,8 +327,8 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				{
 					const int64_t bitDepthValue = std::stoll(value);
 					if (bitDepthValue <= 0) {
-						std::cout << ("ApproxSS Error: Bit depth must be over 0 bits. Line: \"" + std::to_string(lineCount) + "\". Found: " + std::to_string(bitDepthValue) + ".") << std::endl;
-						std::exit(EXIT_FAILURE);
+						std::cerr << "ApproxSS Error: Bit depth must be over 0 bits. Line: \"" << lineCount << "\". Found: " << bitDepthValue << "." << std::endl;
+						PIN_ExitProcess(EXIT_FAILURE);
 					}
 					injectorCfg->SetBitDepth(static_cast<size_t>(bitDepthValue));
 				}
@@ -347,8 +347,8 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				#endif
 				break;
 			default:
-				std::cout << ("ApproxSS Error: malformed configuration. Unrecognized field: \"" + field + "\". Line: " + std::to_string(lineCount) + ".") << std::endl;
-				std::exit(EXIT_FAILURE);
+				std::cerr << ("ApproxSS Error: malformed configuration. Unrecognized field: \"" + field + "\". Line: " + std::to_string(lineCount) + ".") << std::endl;
+				PIN_ExitProcess(EXIT_FAILURE);
 				break;
 		}
 	}
@@ -378,8 +378,8 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 	std::ifstream inputFile(profileFilename);
 
 	if (!inputFile) {
-		std::cout << ("ApproxSS Error: Unable to open memory energy consumption profile.") << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Unable to open memory energy consumption profile." << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	std::string line;
@@ -396,8 +396,8 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 
 		const InjectorConfigurationMap::const_iterator injectorIt = g_injectorConfigurations.find(configurationId);
 		if (injectorIt == g_injectorConfigurations.cend()) {
-			std::cout << "ApproxSS Error: respective injector configuration not specified. Found id: " << configurationId << "." << std::endl;
-			std::exit(EXIT_FAILURE);
+			std::cerr << "ApproxSS Error: respective injector configuration not specified. Found id: " << configurationId << "." << std::endl;
+			PIN_ExitProcess(EXIT_FAILURE);
 		}
 		const InjectionConfigurationReference& respectiveInjectorCfg = *(injectorIt->second);
 
@@ -425,8 +425,8 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 
 	for (const auto& [configurationId, _] : g_injectorConfigurations) {
 		if (g_consumptionProfiles.find(configurationId) == g_consumptionProfiles.cend()) {
-			std::cout << "ApproxSS Error: injector configuration " << configurationId << " does not have a corresponding energy consumption profile." << std::endl;
-			std::exit(EXIT_FAILURE);
+			std::cerr << "ApproxSS Error: injector configuration " << configurationId << " does not have a corresponding energy consumption profile." << std::endl;
+			PIN_ExitProcess(EXIT_FAILURE);
 		}
 	}
 

@@ -1,4 +1,5 @@
 #include "approximate-buffer.h"
+#include "pin.H"
 
 namespace BorrowedMemory {
 	//#if LONG_TERM_BUFFER
@@ -34,18 +35,18 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 {
 
 	if (this->m_faultInjector.GetBitDepth() > (this->m_dataSizeInBytes * BYTE_SIZE)) {
-		std::cout << ("ApproxSS Error: Bit Depth (" + std::to_string(injectorCfg.GetBitDepth()) + "bits in Configuration " + std::to_string(injectorCfg.GetConfigurationId()) + ") greater than Data Size (" + std::to_string(this->m_dataSizeInBytes * BYTE_SIZE) + "bits in Buffer " + std::to_string(this->m_id) + ")") << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: Bit Depth (" << injectorCfg.GetBitDepth() << "bits in Configuration " << injectorCfg.GetConfigurationId() << ") greater than Data Size (" << (this->m_dataSizeInBytes * BYTE_SIZE) << "bits in Buffer " << this->m_id << ")" << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	if (this->m_bufferRange.m_initialAddress > this->m_bufferRange.m_finalAddress) {
-		std::cout << ("ApproxSS Error: On Buffer " + std::to_string(this->m_id) + ".  Initial address (" + std::to_string((size_t) this->m_bufferRange.m_initialAddress) + ") must be less than final address (" + std::to_string((size_t) this->m_bufferRange.m_finalAddress)  + ")") << std::endl; //static_cast<size_t>
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: On Buffer " << this->m_id << ".  Initial address (" << ((size_t) this->m_bufferRange.m_initialAddress) << ") must be less than final address (" << ((size_t) this->m_bufferRange.m_finalAddress)  << ")" << std::endl; //static_cast<size_t>
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	if (this->m_bufferRange.size() < this->m_dataSizeInBytes) {
-		std::cout << ("ApproxSS Error: On Buffer " + std::to_string(this->m_id) + ". Buffer Size (" + std::to_string(this->m_bufferRange.size()) + ") must be greater or equal to Data Size (" + std::to_string(this->m_dataSizeInBytes) + ")") << std::endl;
-		std::exit(EXIT_FAILURE);
+		std::cerr << "ApproxSS Error: On Buffer " << this->m_id << ". Buffer Size (" << this->m_bufferRange.size() << ") must be greater or equal to Data Size (" << this->m_dataSizeInBytes << ")" << std::endl;
+		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
 	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
@@ -617,6 +618,15 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * 
 	}
 }
 
+void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write);
+
+	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
+		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
+		this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, shouldInject);
+	}
+}
+
 void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize) {
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 
@@ -671,6 +681,15 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 		#else
 			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		#endif
+	}
+}
+
+void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read);
+
+	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
+		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
+		this->HandleMemoryReadSingleElementUnsafe(accessedAddress, shouldInject);
 	}
 }
 
@@ -874,7 +893,7 @@ void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementInd
 		this->ApplyPassiveFault(elementIndex, accessedAddress);
 	#endif
 
-	#if !DISTANCE_BASED_FAULT_INJECTOR
+	#if !DISTANCE_BASED_FAULT_INJECTOR //outside of the function to avoid constant rechecking during SIMD or Scattered, must be added
 		if (shouldInject) {
 			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
@@ -918,6 +937,20 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * c
 	this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 }
 
+void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
+
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write);
+	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
+
+	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
+		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
+		const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
+
+		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
+	}
+}
+
 void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize) {
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += accessSize;
 
@@ -931,7 +964,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddr
 		this->ProcessReadMemoryElement(currentElementIndex, currentAddress, shouldInject);
 	}
 
-	#if DISTANCE_BASED_FAULT_INJECTOR
+	#if DISTANCE_BASED_FAULT_INJECTOR //outside of the loop to avoid constant rechecking
 		if (shouldInject) {
 			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
@@ -963,4 +996,23 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
 	#endif
+}
+
+void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += (this->m_dataSizeInBytes * numOpInfo->NumOfElements());
+
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read);
+
+	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
+		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
+		const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
+
+		this->ProcessReadMemoryElement(elementIndex, accessedAddress, shouldInject);
+
+		#if DISTANCE_BASED_FAULT_INJECTOR //has to be here due to non-contiguos access
+			if (shouldInject) {
+				this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			}
+		#endif
+	}
 }

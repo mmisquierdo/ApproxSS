@@ -102,6 +102,10 @@ class ApproximateBuffer {
 
 		void StoreCurrentPeriodLog();
 		void CleanLogs();
+
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
+
 	public:
 		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 						  const InjectionConfigurationReference& injectorCfg);
@@ -145,8 +149,8 @@ class ApproximateBuffer {
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize) = 0;
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize) = 0;
 		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize) = 0;
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) = 0;
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) = 0;
 };
 
 /* ==================================================================== */
@@ -210,7 +214,10 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 		#if LOG_FAULTS
 			static uint64_t* GetWriteErrorsLogFromIterator(const PendingWrites::const_iterator& it);
 		#endif
-				
+
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+	
 	public:
 		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 									const InjectionConfigurationReference& injectorCfg);
@@ -223,8 +230,8 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
 		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
 };
 
 /* ==================================================================== */
@@ -312,6 +319,9 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		void ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject);
 		void ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject);
 
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+
 	public:
 		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 								const InjectionConfigurationReference& injectorCfg);
@@ -328,8 +338,8 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
 		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
 };
 
 #endif /* APPROXIMATE_BUFFER_H */
