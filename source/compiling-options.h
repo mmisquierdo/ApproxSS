@@ -75,7 +75,7 @@ constexpr size_t BYTE_SIZE = 8;
 	#define PIN_ANY_LOCKED PIN_SHARED_LOCKED || PIN_PRIVATE_LOCKED
 #endif
 
-#if PIN_LOCKED
+#if PIN_SHARED_LOCKED
 	#define IF_PIN_SHARED_LOCKED(X) X
 	#define IF_PIN_SHARED_LOCKED_COMMA(X) X,
 #else
@@ -83,7 +83,7 @@ constexpr size_t BYTE_SIZE = 8;
 	#define IF_PIN_SHARED_LOCKED_COMMA(X)
 #endif
 
-#if PIN_LOCKED
+#if PIN_PRIVATE_LOCKED
 	#define IF_PIN_PRIVATE_LOCKED(X) X
 	#define IF_PIN_PRIVATE_LOCKED_COMMA(X) X,
 #else
@@ -91,7 +91,7 @@ constexpr size_t BYTE_SIZE = 8;
 	#define IF_PIN_PRIVATE_LOCKED_COMMA(X)
 #endif
 
-#if PIN_LOCKED
+#if PIN_ANY_LOCKED
 	#define IF_PIN_ANY_LOCKED(X) X
 	#define IF_PIN_ANY_LOCKED_COMMA(X) X,
 #else

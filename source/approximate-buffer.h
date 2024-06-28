@@ -3,6 +3,8 @@
 
 class FaultInjector;
 
+#include "pin.H"
+
 #include <string>
 #include <set>
 #include <map>
@@ -56,13 +58,13 @@ class Range {
 
 typedef std::map<size_t, const std::unique_ptr<PeriodLog>> BufferLogs;
 
-class ApproximateBuffer {
+class ApproximateBuffer : public Range {
 	protected:
 		const int64_t m_id;
-		const Range m_bufferRange;
 		const size_t m_dataSizeInBytes;
 		const size_t m_minimumReadBackupSize;
 		uint64_t m_creationPeriod;
+		PIN_LOCK m_bufferLock;
 		bool m_isActive;
 
 		#if DISTANCE_BASED_FAULT_INJECTOR
@@ -103,6 +105,20 @@ class ApproximateBuffer {
 		void StoreCurrentPeriodLog();
 		void CleanLogs();
 
+		uint64_t GetCurrentPassiveBerMarker() const;
+		bool GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled) const;
+
+		size_t GetIndexFromAddress(uint8_t const * const address) const;
+		size_t GetImplementationBufferSizeInBits() const;
+		size_t GetNumberOfElements() const;
+		size_t GetTotalNecessaryReadBackupSize() const;
+		size_t GetSoftwareBufferSizeInBits() const;
+		ssize_t GetSoftwareBufferSSizeInBytes() const;
+		size_t GetSoftwareBufferSizeInBytes() const;
+		bool IsIgnorableMisaligned(uint8_t const * const address, const uint32_t accessSize) const;
+		bool IsMisaligned(uint8_t const * const address) const; 
+		size_t GetAlignmentOffset(uint8_t const * const address) const;
+
 		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
 
@@ -113,44 +129,25 @@ class ApproximateBuffer {
 		ApproximateBuffer(const ApproximateBuffer&) = delete;
 		ApproximateBuffer(const ApproximateBuffer&&) = delete;
 
-		virtual ~ApproximateBuffer();
-		uint64_t GetCurrentPassiveBerMarker() const;
-		uint64_t GetInitialPassiveBerMarker() const;
-		
+		virtual ~ApproximateBuffer();		
 		void NextPeriod(const uint64_t period);
 
 		virtual void BackupReadData(uint8_t* const data) = 0;
 
-		bool DoesIntersectWith(uint8_t const * const address) const;
-		bool DoesIntersectWith(const Range& range) const;
-		bool IsEqual(const Range& range) const;
-
-		size_t GetAlignmentOffset(uint8_t const * const address) const;
-		bool IsMisaligned(uint8_t const * const address) const; 
-		bool IsIgnorableMisaligned(uint8_t const * const address, const uint32_t accessSize) const;
-		size_t GetSoftwareBufferSizeInBytes() const;
-		ssize_t GetSoftwareBufferSSizeInBytes() const;
-		size_t GetSoftwareBufferSizeInBits() const;
-		size_t GetTotalNecessaryReadBackupSize() const;
-		size_t GetNumberOfElements() const;
-		size_t GetImplementationBufferSizeInBits() const;
-		size_t GetIndexFromAddress(uint8_t const * const address) const;
+		virtual void ReactivateBuffer(const uint64_t creationPeriod);
+		virtual void RetireBuffer(const bool giveAwayRecords) = 0;
+		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) = 0;
+		
 		int64_t GetConfigurationId() const;
 
 		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
 		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding = "") const;
-
-		bool GetShouldInject(const size_t errorCat) const;
-
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
-		virtual void RetireBuffer(const bool giveAwayRecords) = 0;
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize) = 0;
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize) = 0;
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize) = 0;
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize) = 0;
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) = 0;
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo) = 0;
 };
 
 /* ==================================================================== */
@@ -226,12 +223,12 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void BackupReadData(uint8_t* const data);
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
 		virtual void RetireBuffer(const bool giveAwayRecords);
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
+		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled);
 };
 
 /* ==================================================================== */
@@ -332,14 +329,16 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		~LongTermApproximateBuffer();
 		
 		virtual void BackupReadData(uint8_t* const data); 
+
+
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
 		virtual void RetireBuffer(const bool giveAwayRecords);
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize);
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo);
+		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled);
 };
 
 #endif /* APPROXIMATE_BUFFER_H */
