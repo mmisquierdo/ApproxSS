@@ -20,8 +20,8 @@ class FaultInjector;
 #include "fault-injector.h"
 #include "consumption-profile.h"
 
-extern bool g_isGlobalInjectionEnabled;
-extern int g_level;
+//extern bool g_isGlobalInjectionEnabled;
+//extern int g_level;
 extern uint64_t g_currentPeriod;
 
 class Range {
@@ -130,10 +130,10 @@ class ApproximateBuffer : public Range {
 		ApproximateBuffer(const ApproximateBuffer&&) = delete;
 
 		virtual ~ApproximateBuffer();		
-		void NextPeriod(const uint64_t period);
 
 		virtual void BackupReadData(uint8_t* const data) = 0;
 
+		void NextPeriod(const uint64_t period);
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
 		virtual void RetireBuffer(const bool giveAwayRecords) = 0;
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;

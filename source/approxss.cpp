@@ -292,8 +292,6 @@ namespace PintoolControl {
 	}
 
 	VOID add_approx(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
 		const Range range = Range(start_address, end_address);
 
 		#if PIN_PRIVATE_LOCKED
@@ -301,6 +299,8 @@ namespace PintoolControl {
 		#else
 			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 		#endif
+
+		IF_PIN_ANY_LOCKED(PIN_GetLock(&g_pinLock, -1);) //note: needed for generalBuffers
 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator lbActive = tdata.m_activeBuffers.lower_bound(range);
@@ -343,7 +343,7 @@ namespace PintoolControl {
 			std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
 		}
 
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		IF_PIN_ANY_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	VOID remove_approx(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
@@ -648,10 +648,6 @@ namespace PintoolOutput {
 	void DeleteDataEstructures() {
 		PintoolControl::generalBuffers.clear();
 
-		/*#if MULTIPLE_ACTIVE_BUFFERS
-			g_activeBuffers.clear();
-		#endif*/
-
 		g_injectorConfigurations.clear();
 	}
 
@@ -676,7 +672,7 @@ namespace PintoolOutput {
 	}
 
 	VOID WriteAccessLog() {
-		PintoolOutput::accessLog << "Final Level: " << g_level << std::endl;
+		//PintoolOutput::accessLog << "Final Level: " << g_level << std::endl;
 		PintoolOutput::accessLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
 		
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
@@ -744,9 +740,13 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID const * const v) {
-		for (const auto& [_, tdata] : PintoolControl::threadControlMap) {
-			tdata->~ThreadControl();
-		}
+		#if PIN_PRIVATE_LOCKED
+			for (const auto& [_, tdata] : PintoolControl::threadControlMap) {
+				tdata->~ThreadControl();
+			}
+		#else
+			PintoolControl::g_mainThreadControl.~ThreadControl();
+		#endif
 
 		PintoolOutput::WriteAccessLog();
 

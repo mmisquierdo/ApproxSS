@@ -16,7 +16,7 @@ namespace BorrowedMemory {
 }
 
 ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
-	Range(bufferRange)
+	Range(bufferRange),
 	m_id(id),
 	m_dataSizeInBytes(dataSizeInBytes),	
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
@@ -48,9 +48,14 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//MUST LOCK
 void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 	#if ENABLE_PASSIVE_INJECTION
 		#if !DISTANCE_BASED_FAULT_INJECTOR
@@ -96,6 +101,8 @@ ApproximateBuffer::~ApproximateBuffer() {
 	this->CleanLogs();
 }
 
+
+//MUST LOCK
 void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.ResetBerIndex(creationPeriod);
@@ -119,7 +126,11 @@ void ApproximateBuffer::StoreCurrentPeriodLog() {
 	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
 }
 
+
+//LOCKED
 void ApproximateBuffer::NextPeriod(const uint64_t period) {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
 		if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 			this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
@@ -134,6 +145,8 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 	#endif
 
 	this->m_periodLog.ResetCounts(period, this->m_faultInjector);
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 uint64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
@@ -384,7 +397,10 @@ ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
 	ApproximateBuffer::~ApproximateBuffer();
 }
 
+//LOCKED
 void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	if (this->m_isActive) {
 		this->ReverseAllReadErrors();
 		this->ApplyAllWriteErrors();
@@ -398,6 +414,8 @@ void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 		this->m_isActive = false;
 	}
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
@@ -406,8 +424,13 @@ void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 	this->m_remainingReads.insert(this->m_readHint, {data, readBackup});
 }
 
+//LOCKED
 void ShortTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	ApproximateBuffer::ReactivateBuffer(period);
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 uint8_t* ShortTermApproximateBuffer::GetWriteAddressFromIterator(const PendingWrites::const_iterator& it) {
@@ -712,7 +735,9 @@ LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, c
 						  	const InjectionConfigurationReference& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
 	
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->InitializeRecordsAndBackups(creationPeriod);
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 LongTermApproximateBuffer::~LongTermApproximateBuffer() {
@@ -720,6 +745,7 @@ LongTermApproximateBuffer::~LongTermApproximateBuffer() {
 	ApproximateBuffer::~ApproximateBuffer();
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 	using namespace BorrowedMemory;
 
@@ -779,8 +805,10 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 	}
 }
 
-
+//LOCKED
 void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	if (this->m_isActive) {
 		uint8_t* address = this->m_initialAddress;
 		for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
@@ -797,12 +825,19 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 		this->m_isActive = false;
 	}
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//LOCKED
 void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	ApproximateBuffer::ReactivateBuffer(period);
 
 	LongTermApproximateBuffer::InitializeRecordsAndBackups(period);
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {
