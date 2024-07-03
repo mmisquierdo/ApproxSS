@@ -15,13 +15,14 @@ namespace BorrowedMemory {
 	#endif
 }
 
+//LOCKED
 ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
 	Range(bufferRange),
 	m_id(id),
 	m_dataSizeInBytes(dataSizeInBytes),	
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
 	m_creationPeriod(creationPeriod),
-	m_isActive(true),
+	m_isActive(1),
 
 	#if DISTANCE_BASED_FAULT_INJECTOR
 		m_faultInjector(injectorCfg, dataSizeInBytes),
@@ -77,6 +78,7 @@ void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 	#endif
 }
 
+//MUST LOCK
 void ApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRecords) {
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		if (giveAwayRecords) {
@@ -91,18 +93,24 @@ int64_t ApproximateBuffer::GetConfigurationId() const {
 	return this->m_faultInjector.GetConfigurationId();
 }
 
+//MUST LOCK
 void ApproximateBuffer::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
 	for (BufferLogs::const_iterator it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {
 		it = this->m_bufferLogs.erase(it);
 	}
 }
 
+//LOCKED
 ApproximateBuffer::~ApproximateBuffer() {
+	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+
 	this->CleanLogs();
+
+	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-
 //MUST LOCK
+//AND m_isActive MUST BE CHECKED
 void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.ResetBerIndex(creationPeriod);
@@ -118,14 +126,12 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 	} else {
 		this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector);
 	}
-
-	this->m_isActive = true;
 }
 
+//MUST LOCK
 void ApproximateBuffer::StoreCurrentPeriodLog() {
 	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
 }
-
 
 //LOCKED
 void ApproximateBuffer::NextPeriod(const uint64_t period) {
@@ -181,6 +187,7 @@ size_t ApproximateBuffer::GetTotalNecessaryReadBackupSize() const {
 	return this->GetNumberOfElements() * this->m_minimumReadBackupSize;
 }
 
+//MUST LOCK
 bool ApproximateBuffer::GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled) const {
 	return isThreadInjectionEnabled && this->m_faultInjector.GetShouldGoOn(errorCat); 
 }
@@ -202,6 +209,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 
 #if ENABLE_PASSIVE_INJECTION
 	#if LOG_FAULTS
+		//MUST LOCK
 		uint64_t* ApproximateBuffer::GetPassiveErrorsLogFromIterator(const BufferLogs::const_iterator& it) const {
 			if (it != this->m_bufferLogs.cend()) {
 				return it->second->GetErrorCountsByBit(ErrorCategory::Passive);
@@ -210,14 +218,16 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			}
 		}
 
+		//MUST LOCK
 		void ApproximateBuffer::AdvanceBufferLogIterator(BufferLogs::const_iterator& it) const {
-			if (it != this->m_bufferLogs.cend()) { //map iterators are circular
+			if (it != this->m_bufferLogs.cend()) { //NOTE: map iterators are circular
 				++it;
 			}
 		}
 	#endif
 
 	#if !DISTANCE_BASED_FAULT_INJECTOR
+		//MUST LOCK
 		void ApproximateBuffer::UpdateLastAccessPeriod(uint8_t const * const initialAddress, const uint32_t accessSize) {
 			const size_t initialElementIndex = this->GetIndexFromAddress(initialAddress);
 			const size_t elementCount = accessSize / this->m_dataSizeInBytes;
@@ -225,16 +235,19 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			std::fill_n(&m_lastAccessPeriod[initialElementIndex], elementCount, this->GetCurrentPassiveBerMarker());
 		}
 
+		//MUST LOCK
 		void ApproximateBuffer::UpdateLastAccessPeriod(uint8_t const * const accessedAddress) {
 			const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
 			this->UpdateLastAccessPeriod(elementIndex);
 		}
 
+		//MUST LOCK
 		void ApproximateBuffer::UpdateLastAccessPeriod(const size_t elementIndex) {
 			this->m_lastAccessPeriod[elementIndex] = this->GetCurrentPassiveBerMarker();
 		}
 	#endif
 
+	//MUST LOCK
 	void ApproximateBuffer::ApplyAllPassiveErrors() {
 		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->ApplyPassiveFault(this->m_initialAddress, this->m_finalAddress);
@@ -249,6 +262,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 	}
 
 	#if !DISTANCE_BASED_FAULT_INJECTOR
+		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 			if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 				size_t elementIndex = this->GetIndexFromAddress(initialAddress);
@@ -259,6 +273,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			}
 		}
 
+		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(uint8_t * const accessedAddress) {
 			if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
 				const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
@@ -266,6 +281,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			}
 		}
 
+		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(const size_t elementIndex, uint8_t * const accessedAddress) {
 			const uint64_t currentMarker = this->GetCurrentPassiveBerMarker();
 			
@@ -392,6 +408,7 @@ ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange,
 													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cend())
 													{}
 
+//LOCKED (INDIRECTLY)
 ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
 	ShortTermApproximateBuffer::RetireBuffer(false);
 	ApproximateBuffer::~ApproximateBuffer();
@@ -401,7 +418,11 @@ ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
 void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	if (this->m_isActive) {
+	if (this->m_isActive >= 1) { //if there's at least one thread using it...
+		this->m_isActive--;
+	}
+
+	if (this->m_isActive == 0) { //failsafe against repeated retirements
 		this->ReverseAllReadErrors();
 		this->ApplyAllWriteErrors();
 		#if ENABLE_PASSIVE_INJECTION
@@ -412,12 +433,13 @@ void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 		ApproximateBuffer::GiveAwayRecordsAndBackups(giveAwayRecords);
 
-		this->m_isActive = false;
+		this->m_isActive--;
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 	uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
 	std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
@@ -428,11 +450,16 @@ void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 void ShortTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	ApproximateBuffer::ReactivateBuffer(period);
+	if (this->m_isActive == 0) {
+		ApproximateBuffer::ReactivateBuffer(period);
+	}
+
+	this->m_isActive++;
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//MUST LOCK
 uint8_t* ShortTermApproximateBuffer::GetWriteAddressFromIterator(const PendingWrites::const_iterator& it) {
 	#if !MULTIPLE_BER_CONFIGURATION && !LOG_FAULTS
 		return *it;
@@ -441,6 +468,7 @@ uint8_t* ShortTermApproximateBuffer::GetWriteAddressFromIterator(const PendingWr
 	#endif
 }
 
+//MUST LOCK
 auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::const_iterator& it) {
 	#if MULTIPLE_BER_CONFIGURATION
 		#if LOG_FAULTS
@@ -458,6 +486,7 @@ auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::co
 }
 
 #if LOG_FAULTS
+	//MUST LOCK
 	uint64_t* ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(const PendingWrites::const_iterator& it) {
 		#if MULTIPLE_BER_CONFIGURATION
 			return it->second.second;
@@ -467,6 +496,7 @@ auto ShortTermApproximateBuffer::GetWriteBerFromIterator(const PendingWrites::co
 	}
 #endif
 
+//MUST LOCK
 PendingWrites::const_iterator ShortTermApproximateBuffer::ApplyFaultyWrite(const PendingWrites::const_iterator it) {
 	uint8_t* const address = ShortTermApproximateBuffer::GetWriteAddressFromIterator(it);
 	const auto ber = ShortTermApproximateBuffer::GetWriteBerFromIterator(it); 
@@ -480,6 +510,7 @@ PendingWrites::const_iterator ShortTermApproximateBuffer::ApplyFaultyWrite(const
 	return this->m_pendingWrites.erase(it);
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const accessedAddress) {
 	const PendingWrites::const_iterator it = this->m_pendingWrites.lower_bound(accessedAddress);
 	if (it != this->m_pendingWrites.cend())	{
@@ -487,6 +518,7 @@ void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const accessedAddres
 	}
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 	PendingWrites::const_iterator lowerIt = this->m_pendingWrites.lower_bound(initialAddress);
 	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
@@ -499,12 +531,14 @@ void ShortTermApproximateBuffer::ApplyFaultyWrite(uint8_t * const initialAddress
 	}
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::ApplyAllWriteErrors() {
 	for (PendingWrites::const_iterator it = this->m_pendingWrites.cbegin(); it != this->m_pendingWrites.cend(); /**/) {
 		it = this->ApplyFaultyWrite(it);
 	}
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, PendingWrites::const_iterator& hint) {
 	#if MULTIPLE_BER_CONFIGURATION
 		#if LOG_FAULTS
@@ -533,12 +567,14 @@ void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, Pendi
 	++hint;
 }
 
+//MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(const RemainingReads::const_iterator it) {
 	std::copy_n(it->second, this->m_minimumReadBackupSize, it->first);
 	delete[] it->second;
 	return this->m_remainingReads.erase(it);
 }
 
+//MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const accessedAddress) {
 	RemainingReads::const_iterator it = this->m_remainingReads.find(accessedAddress);
 	if (it != this->m_remainingReads.cend()) {
@@ -547,6 +583,7 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uin
 	return it;
 }
 
+//MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 	RemainingReads::const_iterator lowerIt = this->m_remainingReads.lower_bound(initialAddress); 
 	while (lowerIt != this->m_remainingReads.cend() && lowerIt->first < finalAddress) {
@@ -555,17 +592,20 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uin
 	return lowerIt;
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::ReverseAllReadErrors() {
 	for (RemainingReads::const_iterator it = this->m_remainingReads.cbegin(); it != this->m_remainingReads.cend(); /**/) {
 		it = this->ReverseFaultyRead(it);
 	}
 }
 
+//MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::InvalidateRemainingRead(const RemainingReads::const_iterator it) {
 	delete[] it->second;
 	return this->m_remainingReads.erase(it);
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::InvalidateRemainingRead(uint8_t * const accessedAddress) {
 	const RemainingReads::const_iterator it = this->m_remainingReads.find(accessedAddress); 
 	if (it != this->m_remainingReads.cend()) {
@@ -573,6 +613,7 @@ void ShortTermApproximateBuffer::InvalidateRemainingRead(uint8_t * const accesse
 	}
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::InvalidateRemainingRead(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
 	RemainingReads::const_iterator lowerIt = this->m_remainingReads.lower_bound(initialAddress); 
 	while (lowerIt != this->m_remainingReads.cend() && lowerIt->first < finalAddress) {
@@ -620,6 +661,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * co
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//LOCKED
 void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += this->m_dataSizeInBytes;
 
@@ -694,6 +736,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * con
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//MUST LOCK
 void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += this->m_dataSizeInBytes;
 
@@ -714,6 +757,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 	}
 }
 
+//LOCKED
 void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
@@ -731,6 +775,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAN
 /* Long Term Approximate Buffer											*/
 /* ==================================================================== */
 
+//LOCKED
 LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 						  	const InjectionConfigurationReference& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
@@ -740,6 +785,7 @@ LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, c
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//LOCKED (INDIRECTLY)
 LongTermApproximateBuffer::~LongTermApproximateBuffer() {
 	LongTermApproximateBuffer::RetireBuffer(false);
 	ApproximateBuffer::~ApproximateBuffer();
@@ -776,6 +822,8 @@ void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t perio
 	#endif
 }
 
+
+//MUST LOCK
 void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRecords) {
 	ApproximateBuffer::GiveAwayRecordsAndBackups(giveAwayRecords);
 
@@ -809,7 +857,11 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	if (this->m_isActive) {
+	if (this->m_isActive >= 1) { //if there's at least one thread using it...
+		this->m_isActive--;
+	}
+
+	if (this->m_isActive == 0) { //failsafe against repeated retirements
 		uint8_t* address = this->m_initialAddress;
 		for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
 			this->ProcessReadMemoryElement(elementIndex, address, false);
@@ -822,8 +874,6 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 		this->StoreCurrentPeriodLog();
 
 		this->GiveAwayRecordsAndBackups(giveAwayRecords);
-
-		this->m_isActive = false;
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -833,13 +883,17 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	ApproximateBuffer::ReactivateBuffer(period);
+	if (this->m_isActive == 0) { //failsafe againt repeated reactivations
+		ApproximateBuffer::ReactivateBuffer(period);
+		LongTermApproximateBuffer::InitializeRecordsAndBackups(period);
+	}
 
-	LongTermApproximateBuffer::InitializeRecordsAndBackups(period);
+	this->m_isActive++;
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {
 	#if MULTIPLE_BER_CONFIGURATION
 		#if !DISTANCE_BASED_FAULT_INJECTOR
@@ -858,11 +912,12 @@ uint8_t* LongTermApproximateBuffer::GetBackupAddressFromIndex(const size_t index
 	return &(this->m_readBackups[index * this->m_minimumReadBackupSize]);
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::ReverseFaultyRead(const size_t elementIndex, uint8_t* const accessedAddress) {
 	std::copy_n(this->GetBackupAddressFromIndex(elementIndex), this->m_minimumReadBackupSize, accessedAddress);
 }
 
-
+//MUST LOCK
 auto LongTermApproximateBuffer::GetWriteBer(const size_t elementIndex) {
 	#if !DISTANCE_BASED_FAULT_INJECTOR
 		#if MULTIPLE_BER_CONFIGURATION 
@@ -879,6 +934,7 @@ auto LongTermApproximateBuffer::GetWriteBer(const size_t elementIndex) {
 	#endif
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::ApplyWriteFault(const size_t elementIndex, uint8_t* const accessedAddress) {
 	auto ber = this->GetWriteBer(elementIndex);
 
@@ -901,6 +957,7 @@ void LongTermApproximateBuffer::ApplyWriteFault(const size_t elementIndex, uint8
 	#endif
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 	const size_t elementIndex = this->GetIndexFromAddress(data);
 	uint8_t* const backupAddress = this->GetBackupAddressFromIndex(elementIndex);
@@ -908,6 +965,7 @@ void LongTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 	this->m_records[elementIndex].errorStatus = ErrorStatus::Read;
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject) {
 	this->m_records[elementIndex].errorStatus = newStatus;
 
@@ -922,6 +980,7 @@ void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t element
 	#endif
 }
 
+//MUST LOCK
 void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject) {
 	uint8_t& currentErrorStatus = this->m_records[elementIndex].errorStatus;
 

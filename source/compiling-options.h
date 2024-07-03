@@ -62,11 +62,11 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef PIN_SHARED_LOCKED
-	#define PIN_SHARED_LOCKED true
+	#define PIN_SHARED_LOCKED false
 #endif
 
 #ifndef PIN_PRIVATE_LOCKED
-	#define PIN_PRIVATE_LOCKED !PIN_SHARED_LOCKED && true
+	#define PIN_PRIVATE_LOCKED !PIN_SHARED_LOCKED && false
 #endif
 
 //USER-DEFINED END
