@@ -117,7 +117,7 @@ namespace PintoolControl {
 	#endif
 
 	//i had to add the next two because i needed a simple and direct way of enabling and disabling the error injection
-	VOID enable_global_injection(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID enable_global_injection(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if PIN_PRIVATE_LOCKED
@@ -131,7 +131,7 @@ namespace PintoolControl {
 		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_global_injection(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID disable_global_injection(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if PIN_PRIVATE_LOCKED
@@ -145,7 +145,7 @@ namespace PintoolControl {
 		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_access_instrumentation(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID disable_access_instrumentation(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		SET_ACCESS_INSTRUMENTATION_STATUS(false)
@@ -154,7 +154,7 @@ namespace PintoolControl {
 	}
 
 	//effectively enables the error injection  //not a boolean to allow layers (so functions that call each other don't disable the injection)
-	VOID start_level(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID start_level(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if PIN_PRIVATE_LOCKED
@@ -169,7 +169,7 @@ namespace PintoolControl {
 	}
 
 	//effectively disables the error injection
-	VOID end_level(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID end_level(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if PIN_PRIVATE_LOCKED
@@ -183,7 +183,7 @@ namespace PintoolControl {
 		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID next_period(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId)) {
+	VOID next_period(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
 		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		++g_currentPeriod;
@@ -297,15 +297,15 @@ namespace PintoolControl {
 			static PIN_LOCK tcMap_lock;
 		#endif
 			
-		VOID ThreadStart(const THREADID threadId, CONTEXT const * const ctxt, const INT32 flags, VOID cont * const v) { //TODO: deixar a mainThreadControl iniciar aqui 
+		VOID ThreadStart(const THREADID threadId, CONTEXT * ctxt, const INT32 flags, VOID * v) {
 			std::cout << std::endl << "Thread STARTED. Id: " << threadId  << std::endl;
 
 			#if PIN_PRIVATE_LOCKED
 				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
-				const ThreadControlMap::const_iterator it = PintoolControl::threadControlMap.insert({threadId, std::make_unique<ThreadControl>(threadId)});
+				const std::pair<const ThreadControlMap::const_iterator, const bool> it = PintoolControl::threadControlMap.insert({threadId, std::make_unique<ThreadControl>(threadId)});
 				PIN_ReleaseLock(&tcMap_lock);
 
-				if (PIN_SetThreadData(g_tlsKey, it->second.get(), threadId) == FALSE) {
+				if (PIN_SetThreadData(g_tlsKey, it.first->second.get(), threadId) == FALSE) {
 					std::cerr << "Pin Error: PIN_SetThreadData failed" << std::endl;
 					PIN_ExitProcess(EXIT_FAILURE);
 				}
@@ -313,7 +313,7 @@ namespace PintoolControl {
 		}
 		
 		// This function is called when the thread exits
-		VOID ThreadFini(const THREADID threadId, CONTEXT const * const ctxt, const INT32 code, VOID const * const v) {
+		VOID ThreadFini(const THREADID threadId, CONTEXT const * const ctxt, const INT32 code, VOID * v) {
 			std::cout << std::endl << "Thread ENDED: " << threadId << std::endl;
 
 			#if PIN_PRIVATE_LOCKED
