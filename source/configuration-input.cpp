@@ -1,5 +1,4 @@
 #include "configuration-input.h"
-#include "pin.H"
 
 // trim from start (in place)
 void StringHandling::lTrim(std::string& s) {

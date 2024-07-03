@@ -159,10 +159,6 @@ uint64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
 	return g_currentPeriod;
 }
 
-uint64_t ApproximateBuffer::GetInitialPassiveBerMarker() const {
-	return this->m_creationPeriod;
-}
-
 size_t ApproximateBuffer::GetSoftwareBufferSizeInBytes() const {
 	return this->size();
 }
@@ -420,20 +416,20 @@ void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
-	}
 
-	if (this->m_isActive == 0) { //failsafe against repeated retirements
-		this->ReverseAllReadErrors();
-		this->ApplyAllWriteErrors();
-		#if ENABLE_PASSIVE_INJECTION
-			this->ApplyAllPassiveErrors(); 
-		#endif
+		if (this->m_isActive == 0) { //failsafe against repeated retirements
+			this->ReverseAllReadErrors();
+			this->ApplyAllWriteErrors();
+			#if ENABLE_PASSIVE_INJECTION
+				this->ApplyAllPassiveErrors(); 
+			#endif
 
-		this->StoreCurrentPeriodLog();
+			this->StoreCurrentPeriodLog();
 
-		ApproximateBuffer::GiveAwayRecordsAndBackups(giveAwayRecords);
+			ApproximateBuffer::GiveAwayRecordsAndBackups(giveAwayRecords);
 
-		this->m_isActive--;
+			this->m_isActive--;
+		}
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -684,7 +680,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERA
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
-		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
+		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
 		this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, shouldInject);
 	}
 
@@ -764,7 +760,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAN
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
-		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
+		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
 		this->HandleMemoryReadSingleElementUnsafe(accessedAddress, shouldInject);
 	}
 
@@ -859,21 +855,21 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
-	}
 
-	if (this->m_isActive == 0) { //failsafe against repeated retirements
-		uint8_t* address = this->m_initialAddress;
-		for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
-			this->ProcessReadMemoryElement(elementIndex, address, false);
-		}		
+		if (this->m_isActive == 0) { //failsafe against repeated retirements
+			uint8_t* address = this->m_initialAddress;
+			for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
+				this->ProcessReadMemoryElement(elementIndex, address, false);
+			}		
 
-		#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR //otherwise, applied by the loop above
-			this->ApplyAllPassiveErrors(); 
-		#endif
+			#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR //otherwise, applied by the loop above
+				this->ApplyAllPassiveErrors(); 
+			#endif
 
-		this->StoreCurrentPeriodLog();
+			this->StoreCurrentPeriodLog();
 
-		this->GiveAwayRecordsAndBackups(giveAwayRecords);
+			this->GiveAwayRecordsAndBackups(giveAwayRecords);
+		}
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -1060,7 +1056,7 @@ void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAN
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
-		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
+		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
 		const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
 
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
@@ -1128,12 +1124,12 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += (this->m_dataSizeInBytes * numOpInfo->NumOfElements());
+	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
-		uint8_t * const = accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
+		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
 		const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
 
 		this->ProcessReadMemoryElement(elementIndex, accessedAddress, shouldInject);

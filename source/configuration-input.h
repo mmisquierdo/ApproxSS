@@ -1,6 +1,8 @@
 #ifndef CONFIGURATION_INPUT_H
 #define CONFIGURATION_INPUT_H
 
+#include "pin.H"
+
 #include <string>
 #include <algorithm>
 #include <iostream>

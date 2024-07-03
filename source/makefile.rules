@@ -80,27 +80,27 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 
 # Build the intermediate object file.
 $(OBJDIR)fault-injector$(OBJ_SUFFIX): fault-injector.cpp fault-injector.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)period-log$(OBJ_SUFFIX): period-log.cpp period-log.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)injector-configuration$(OBJ_SUFFIX): injector-configuration.cpp injector-configuration.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)consumption-profile$(OBJ_SUFFIX): consumption-profile.cpp consumption-profile.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)configuration-input$(OBJ_SUFFIX): configuration-input.cpp configuration-input.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buffer.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -O3 -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)approxss$(OBJ_SUFFIX): approxss.cpp compiling-options.h
@@ -108,4 +108,4 @@ $(OBJDIR)approxss$(OBJ_SUFFIX): approxss.cpp compiling-options.h
 
 # Build the tool as a dll (shared object).
 $(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h
-	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wconversion -Wsign-conversion -Wpedantic -O3 -flto=1 $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
+	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wpedantic -O3 -flto=1 $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
