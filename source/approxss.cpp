@@ -24,6 +24,9 @@ uint64_t g_currentPeriod = 0; //NOTE: possible minor race condition
 
 #if PIN_ANY_LOCKED
 	PIN_LOCK g_pinLock;
+#endif
+
+#if PIN_PRIVATE_LOCKED
 	TLS_KEY g_tlsKey = INVALID_TLS_KEY;
 #endif
 
@@ -300,7 +303,7 @@ namespace PintoolControl {
 		#endif
 			
 		VOID ThreadStart(const THREADID threadId, CONTEXT * ctxt, const INT32 flags, VOID * v) {
-			std::cout << std::endl << "Thread STARTED. Id: " << threadId  << std::endl;
+			std::cout << std::endl << "Target application thread STARTED. Id: " << threadId  << std::endl;
 
 			#if PIN_PRIVATE_LOCKED
 				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
@@ -316,7 +319,7 @@ namespace PintoolControl {
 		
 		// This function is called when the thread exits
 		VOID ThreadFini(const THREADID threadId, CONTEXT const * const ctxt, const INT32 code, VOID * v) {
-			std::cout << std::endl << "Thread ENDED: " << threadId << std::endl;
+			std::cout << std::endl << "Target application thread ENDED: " << threadId << std::endl;
 
 			#if PIN_PRIVATE_LOCKED
 				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
@@ -816,11 +819,13 @@ int main(const int argc, char* argv[]) {
 	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, nullptr);
 
 	// Obtain  a key for TLS storage.
-	g_tlsKey = PIN_CreateThreadDataKey(nullptr);
-    if (g_tlsKey == INVALID_TLS_KEY)    {
-        std::cerr << "Pin Error: number of already allocated keys reached the MAX_CLIENT_TLS_KEYS limit" << std::endl;
-        PIN_ExitProcess(EXIT_FAILURE);
-    }
+	#if PIN_PRIVATE_LOCKED
+		g_tlsKey = PIN_CreateThreadDataKey(nullptr);
+		if (g_tlsKey == INVALID_TLS_KEY)    {
+			std::cerr << "Pin Error: number of already allocated keys reached the MAX_CLIENT_TLS_KEYS limit" << std::endl;
+			PIN_ExitProcess(EXIT_FAILURE);
+		}
+	#endif
 	
 	#if PIN_ANY_LOCKED
 		// Register ThreadStart to be called when a thread starts.
