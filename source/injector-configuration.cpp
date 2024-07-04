@@ -31,12 +31,10 @@ InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurat
 	this->m_bitDepth = other.GetBitDepth();
 }
 
-
 InjectionConfigurationBase::InjectionConfigurationBase() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;
 }
-
 
 int64_t InjectionConfigurationBase::GetConfigurationId() const {
 	return this->m_configurationId;

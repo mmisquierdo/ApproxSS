@@ -20,10 +20,12 @@
 //bool g_isGlobalInjectionEnabled = true;
 //int g_level = 0;
 uint64_t g_injectionCalls = 0; //NOTE: possible race condition, but I don't care
-uint64_t g_currentPeriod = 0;
+uint64_t g_currentPeriod = 0; //NOTE: possible minor race condition
 
-PIN_LOCK g_pinLock;
-TLS_KEY g_tlsKey = INVALID_TLS_KEY;
+#if PIN_ANY_LOCKED
+	PIN_LOCK g_pinLock;
+	TLS_KEY g_tlsKey = INVALID_TLS_KEY;
+#endif
 
 #if NARROW_ACCESS_INSTRUMENTATION
 	bool IsInstrumentationActive = false;
@@ -184,7 +186,7 @@ namespace PintoolControl {
 	}
 
 	VOID next_period(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
+		IF_PIN_ANY_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		++g_currentPeriod;
 
@@ -204,7 +206,7 @@ namespace PintoolControl {
 			}
 		#endif
 
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		IF_PIN_ANY_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	VOID add_approx(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
@@ -649,11 +651,14 @@ namespace PintoolOutput {
 		PintoolOutput::PrintEnabledOrDisabled("Multithreading global shared mutex", PIN_SHARED_LOCKED);
 		PintoolOutput::PrintEnabledOrDisabled("Multithreading private mutex", PIN_PRIVATE_LOCKED);
 
-
 		std::cout << std::string(50, '#') << std::endl;
 	}
 
 	void DeleteDataEstructures() {
+		#if PIN_PRIVATE_LOCKED
+			PintoolControl::threadControlMap.clear();
+		#endif
+
 		PintoolControl::generalBuffers.clear();
 
 		g_injectorConfigurations.clear();
