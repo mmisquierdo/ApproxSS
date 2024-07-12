@@ -319,7 +319,13 @@ namespace PintoolControl {
 		
 		// This function is called when the thread exits
 		VOID ThreadFini(const THREADID threadId, CONTEXT const * const ctxt, const INT32 code, VOID * v) {
-			std::cout << std::endl << "Target application thread ENDED: " << threadId << std::endl;
+			#if PIN_PRIVATE_LOCKED
+				ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
+			#else
+				ThreadControl& tdata = PintoolControl::g_mainThreadControl;
+			#endif
+
+			std::cout << std::endl << "Target application thread ENDED: " << threadId << ". Final level: " << tdata.m_level << std::endl;
 
 			#if PIN_PRIVATE_LOCKED
 				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
