@@ -101,6 +101,31 @@ class ThreadControl {
 			}
 		#endif
 	}
+
+	bool HasActiveBuffer() const {
+		return 
+		#if MULTIPLE_ACTIVE_BUFFERS
+			(!PintoolControl::g_mainThreadControl.m_activeBuffers.empty())
+		#else
+			(PintoolControl::g_mainThreadControl.m_activeBuffer)
+		#endif
+		;
+	}
+
+	bool IsPresent(const Range& range) const {
+		#if MULTIPLE_ACTIVE_BUFFERS
+			const ActiveBuffers::const_iterator it =  this->m_activeBuffers.find(range);
+			if (it != this->m_activeBuffers.cend()) {
+				return true;
+			}
+		#else
+			if (this->m_activeBuffer != nullptr && this->m_activeBuffer->DoesIntersectWith(range)) {
+				return true;
+			}
+		#endif
+
+		return false;
+	}
 };
 
 typedef std::map<THREADID, std::unique_ptr<ThreadControl>> ThreadControlMap;
@@ -114,90 +139,65 @@ ConsumptionProfileMap 		g_consumptionProfiles;
 
 namespace PintoolControl {
 	GeneralBuffers generalBuffers;
+	ThreadControl g_mainThreadControl(-1);
 
-	#if PIN_PRIVATE_LOCKED 
-		ThreadControlMap threadControlMap;
-	#else
-		ThreadControl g_mainThreadControl(-1);
+	#if PIN_LOCKED 
+		ThreadControlMap threadControlMap;	
 	#endif
 
 	//i had to add the next two because i needed a simple and direct way of enabling and disabling the error injection
-	VOID enable_global_injection(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
-		#if PIN_PRIVATE_LOCKED
-			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
+	VOID enable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
+		#if PIN_LOCKED
+			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId))); //TODO: they only really make sense for their thread 
 		#else
 			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 		#endif
 
 		tdata.m_injectionEnabled = true;
-
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_global_injection(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
-		#if PIN_PRIVATE_LOCKED
+	VOID disable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
+		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
 			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 		#endif
 
 		tdata.m_injectionEnabled = false;
-
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID disable_access_instrumentation(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
+	VOID disable_access_instrumentation() {
 		SET_ACCESS_INSTRUMENTATION_STATUS(false)
-
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	//effectively enables the error injection  //not a boolean to allow layers (so functions that call each other don't disable the injection)
-	VOID start_level(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
-		#if PIN_PRIVATE_LOCKED
+	VOID start_level(IF_PIN_LOCKED(const THREADID threadId)) {
+		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
 			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 		#endif
 
 		tdata.m_level++;
-
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
 	//effectively disables the error injection
-	VOID end_level(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
-		#if PIN_PRIVATE_LOCKED
+	VOID end_level(IF_PIN_LOCKED(const THREADID threadId)) {
+		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
 			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 		#endif
 
 		tdata.m_level--;
-
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID next_period(IF_PIN_PRIVATE_LOCKED(const THREADID threadId)) {
-		IF_PIN_ANY_LOCKED(PIN_GetLock(&g_pinLock, -1);)
+	VOID next_period() {
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		++g_currentPeriod;
 
-		#if PIN_PRIVATE_LOCKED
-			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
-		#else
-			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
-		#endif
+		ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			for (const auto& [_, activeBuffer] : tdata.m_activeBuffers) {
@@ -209,25 +209,22 @@ namespace PintoolControl {
 			}
 		#endif
 
-		IF_PIN_ANY_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID add_approx(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
+	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
 		const Range range = Range(start_address, end_address);
 
-		#if PIN_PRIVATE_LOCKED
-			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
-		#else
-			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
-		#endif
+		
+		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
-		IF_PIN_ANY_LOCKED(PIN_GetLock(&g_pinLock, -1);) //note: needed for generalBuffers
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if MULTIPLE_ACTIVE_BUFFERS
-			const ActiveBuffers::const_iterator lbActive = tdata.m_activeBuffers.lower_bound(range);
-			if (!((lbActive != tdata.m_activeBuffers.cend()) && !(tdata.m_activeBuffers.key_comp()(range, lbActive->first)))) //only inserts if it wasn't found (done like this to avoid possible memory leaks from the new's in case there's a overlap)
+			ActiveBuffers::const_iterator lbActiveMain = mainThread.m_activeBuffers.lower_bound(range);
+			if (!((lbActiveMain != mainThread.m_activeBuffers.cend()) && !(mainThread.m_activeBuffers.key_comp()(range, lbActiveMain->first)))) //only inserts if it wasn't found (done like this to avoid possible memory leaks from the new's in case there's a overlap)
 		#else
-			if (tdata.m_activeBuffer == nullptr)
+			if (mainThread.m_activeBuffer == nullptr)
 		#endif
 		{
 			const GeneralBufferRecord generalBufferKey = std::make_tuple(range.m_initialAddress, range.m_finalAddress, bufferId, configurationId, dataSizeInBytes);
@@ -237,10 +234,10 @@ namespace PintoolControl {
 				#if MULTIPLE_ACTIVE_BUFFERS
 					ChosenTermApproximateBuffer* const approxBuffer = lbGeneral->second.get();
 					approxBuffer->ReactivateBuffer(g_currentPeriod);
-					tdata.m_activeBuffers.insert(lbActive, {range, approxBuffer});
+					mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});
 				#else
-					tdata.m_activeBuffer = lbGeneral->second.get();
-					tdata.m_activeBuffer->ReactivateBuffer(g_currentPeriod);
+					mainThread.m_activeBuffer = lbGeneral->second.get();
+					mainThread.m_activeBuffer->ReactivateBuffer(g_currentPeriod);
 				#endif
 			} else {
 				const InjectorConfigurationMap::const_iterator bcIt = g_injectorConfigurations.find(configurationId);
@@ -253,85 +250,123 @@ namespace PintoolControl {
 				ChosenTermApproximateBuffer* const approxBuffer = new ChosenTermApproximateBuffer(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
 
 				#if MULTIPLE_ACTIVE_BUFFERS
-					tdata.m_activeBuffers.insert(lbActive, {range, approxBuffer});
+					lbActiveMain = mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});
 				#else
-					tdata.m_activeBuffer = approxBuffer;
+					mainThread.m_activeBuffer = approxBuffer;
 				#endif
 
-				PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer)); //TODO: LOCK PRA CA
+				PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
 			}
-		} else {
-			std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
-		}
+		} 
+		#if !PIN_LOCKED
+			else {
+				std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
+			}
+		#endif
 
-		IF_PIN_ANY_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+
+		{
+			#if PIN_LOCKED 
+				ThreadControl& localThread = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
+
+				#if MULTIPLE_ACTIVE_BUFFERS
+					const ActiveBuffers::const_iterator lbActiveLocal = localThread.m_activeBuffers.lower_bound(range);
+					if (!((lbActiveLocal != localThread.m_activeBuffers.cend()) && !(localThread.m_activeBuffers.key_comp()(range, lbActiveLocal->first)))) { //only inserts if it wasn't found (done like this to avoid possible memory leaks from the new's in case there's a overlap)
+						ChosenTermApproximateBuffer* const approxBuffer = lbActiveMain->second.get();
+						approxBuffer->ReactivateBuffer(g_currentPeriod);
+						localThread.m_activeBuffers.insert(lbActiveLocal, {range, approxBuffer});
+					}
+				#else
+					if (localThread.m_activeBuffer == nullptr) {
+						localThread.m_activeBuffer = mainThread.m_activeBuffer;
+						localThread.m_activeBuffer->ReactivateBuffer(g_currentPeriod);
+					}
+				#endif
+				  else {
+					std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active in thread " << threadId << ". Ignoring addition request." << std::endl;
+				}
+			#endif
+		}
 	}
 
-	VOID remove_approx(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
+	VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
 		const Range range = Range(start_address, end_address);
 
-		#if PIN_PRIVATE_LOCKED
-			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
-		#else
-			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
-		#endif
+		{
+		#if PIN_LOCKED
+			ThreadControl& localThread = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId))); //TODO: remove approx buffer from both maps
 
-		#if MULTIPLE_ACTIVE_BUFFERS
-			const ActiveBuffers::const_iterator lbActive = tdata.m_activeBuffers.find(range); 
-			if (lbActive != tdata.m_activeBuffers.cend() && lbActive->first.IsEqual(range)){
-				lbActive->second->RetireBuffer(giveAwayRecords);
-				tdata.m_activeBuffers.erase(lbActive);
-			}
-		#else
-			if (tdata.m_activeBuffer != nullptr && tdata.m_activeBuffer->IsEqual(range)) {
-				tdata.m_activeBuffer->RetireBuffer(giveAwayRecords);
-				tdata.m_activeBuffer = nullptr;
+			#if MULTIPLE_ACTIVE_BUFFERS
+				const ActiveBuffers::const_iterator lbActive = localThread.m_activeBuffers.find(range); 
+				if (lbActive != localThread.m_activeBuffers.cend() && lbActive->first.IsEqual(range)){
+					lbActive->second->RetireBuffer(giveAwayRecords);
+					localThread.m_activeBuffers.erase(lbActive);
+				}
+			#else
+				if (localThread.m_activeBuffer != nullptr && localThread.m_activeBuffer->IsEqual(range)) {
+					localThread.m_activeBuffer->RetireBuffer(giveAwayRecords);
+					localThread.m_activeBuffer = nullptr;
+				}
+			#endif
+			  else {
+				std::cout << "ApproxSS Warning: approximate buffer not found for removal in " << threadId << ". Ignorning request." << std::endl;
 			}
 		#endif
-		 else {
-			std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
 		}
 
-		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
+	
+		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;	
+
+		#if MULTIPLE_ACTIVE_BUFFERS
+			const ActiveBuffers::const_iterator lbActive = mainThread.m_activeBuffers.find(range); 
+			if (lbActive != mainThread.m_activeBuffers.cend() && lbActive->first.IsEqual(range)){
+				if (lbActive->second->RetireBuffer(giveAwayRecords)) {
+					mainThread.m_activeBuffers.erase(lbActive); 
+				}
+			}
+		#else
+			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->IsEqual(range)) {
+				if (mainThread.m_activeBuffer->RetireBuffer(giveAwayRecords)) {
+					mainThread.m_activeBuffer = nullptr;
+				}
+			}
+		#endif
+		#if !PIN_LOCKED
+			  else {
+				std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
+			}
+		#endif
+
+		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	#if PIN_ANY_LOCKED
-		#if PIN_PRIVATE_LOCKED
-			static PIN_LOCK tcMap_lock;
-		#endif
+	#if PIN_LOCKED
+		static PIN_LOCK tcMap_lock;
 			
 		VOID ThreadStart(const THREADID threadId, CONTEXT * ctxt, const INT32 flags, VOID * v) {
 			std::cout << std::endl << "Target application thread STARTED. Id: " << threadId  << std::endl;
 
-			#if PIN_PRIVATE_LOCKED
-				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
-				const std::pair<const ThreadControlMap::const_iterator, const bool> it = PintoolControl::threadControlMap.insert({threadId, std::make_unique<ThreadControl>(threadId)});
-				PIN_ReleaseLock(&tcMap_lock);
+			PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
+			const std::pair<const ThreadControlMap::const_iterator, const bool> it = PintoolControl::threadControlMap.insert({threadId, std::make_unique<ThreadControl>(threadId)});
+			PIN_ReleaseLock(&tcMap_lock);
 
-				if (PIN_SetThreadData(g_tlsKey, it.first->second.get(), threadId) == FALSE) {
-					std::cerr << "Pin Error: PIN_SetThreadData failed" << std::endl;
-					PIN_ExitProcess(EXIT_FAILURE);
-				}
-			#endif
+			if (PIN_SetThreadData(g_tlsKey, it.first->second.get(), threadId) == FALSE) {
+				std::cerr << "Pin Error: PIN_SetThreadData failed" << std::endl;
+				PIN_ExitProcess(EXIT_FAILURE);
+			}
 		}
 		
 		// This function is called when the thread exits
 		VOID ThreadFini(const THREADID threadId, CONTEXT const * const ctxt, const INT32 code, VOID * v) {
-			#if PIN_PRIVATE_LOCKED
-				ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
-			#else
-				ThreadControl& tdata = PintoolControl::g_mainThreadControl;
-			#endif
+			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 
 			std::cout << std::endl << "Target application thread ENDED: " << threadId << ". Final level: " << tdata.m_level << std::endl;
 
-			#if PIN_PRIVATE_LOCKED
-				PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
-				PintoolControl::threadControlMap.erase(threadId);
-				PIN_ReleaseLock(&tcMap_lock);
-			#endif
+			PIN_GetLock(&tcMap_lock, threadId); //note: pretty sure this is unnecessary, but why not?
+			PintoolControl::threadControlMap.erase(threadId);
+			PIN_ReleaseLock(&tcMap_lock);
 		}
 	#endif
 }
@@ -341,23 +376,34 @@ namespace PintoolControl {
 /* ==================================================================== */
 
 namespace AccessHandler {
-	VOID CheckAndForward(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		IF_PIN_SHARED_LOCKED(PIN_GetLock(&g_pinLock, -1);)
-
-		#if PIN_PRIVATE_LOCKED
-			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
-		#else
-			ThreadControl& tdata = PintoolControl::g_mainThreadControl;
+	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		#if PIN_LOCKED
+			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{ //TODO: necessário só no multithread
+				return;
+			}
 		#endif
 
+		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
+
+		const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
+
 		#if MULTIPLE_ACTIVE_BUFFERS
-			const ActiveBuffers::const_iterator approxBuffer =  tdata.m_activeBuffers.find(Range{accessedAddress, accessedAddress});
-			if (approxBuffer != tdata.m_activeBuffers.cend()) {
-				(*(approxBuffer->second).*function)(accessedAddress, accessSizeInBytes, tdata.isThreadInjectionEnabled());
+			const Range range = Range{accessedAddress, accessedAddress};
+			const ActiveBuffers::const_iterator it =  mainThread.m_activeBuffers.find(range);
+			if (it != mainThread.m_activeBuffers.cend()) {
+				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
+
+				const ThreadControl& localThread = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId))); //TODO: não vai estar disponivel no single thread
+
+				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, localThread.HasActiveBuffer() && localThread.isThreadInjectionEnabled() && localThread.IsPresent(range));
 			}
 		#else
-			if (tdata.m_activeBuffer != nullptr && tdata.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
-				(*(tdata.m_activeBuffer).*function)(accessedAddress, accessSizeInBytes, tdata.isThreadInjectionEnabled());
+			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
+				ChosenTermApproximateBuffer& approxBuffer = *(approxBuffer);
+
+				const ThreadControl& localThread = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
+
+				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, localThread.HasActiveBuffer() && localThread.isThreadInjectionEnabled() && localThread.IsPresent(range));
 			}
 		#endif
 
@@ -365,24 +411,24 @@ namespace AccessHandler {
 	}
 
 	// memory read
-	VOID HandleMemoryReadSIMD(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID HandleMemoryRead(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
 	// memory write
-	VOID HandleMemoryWriteSIMD(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWriteSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID HandleMemoryWrite(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWrite(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID CheckAndForwardScattered(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
@@ -413,12 +459,12 @@ namespace AccessHandler {
 		IF_PIN_SHARED_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 	}
 
-	VOID HandleMemoryReadScattered(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo);
+	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo);
 	}
 
-	VOID HandleMemoryWriteScattered(IF_PIN_PRIVATE_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(IF_PIN_PRIVATE_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo);
+	VOID HandleMemoryWriteScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo);
 	}
 }
 
@@ -441,19 +487,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -466,19 +512,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -501,7 +547,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("start_level") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::start_level,  
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 							IARG_END);
 			RTN_Close(rtn);
@@ -512,7 +558,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("end_level") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::end_level,  
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID) IARG_END);
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID) IARG_END);
 			RTN_Close(rtn);
 			SET_ACCESS_INSTRUMENTATION_STATUS(true)
 			return;
@@ -520,8 +566,7 @@ namespace TargetInstrumentation {
 
 		if (rtnName.find("next_period") != std::string::npos) {
 			RTN_Open(rtn);
-			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::next_period, 
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::next_period,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
 							IARG_END);
@@ -533,7 +578,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("add_approx") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::add_approx, 
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -548,7 +593,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("remove_approx") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::remove_approx,  
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2, 
@@ -561,7 +606,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("enable_global_injection") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::enable_global_injection, 
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -575,7 +620,7 @@ namespace TargetInstrumentation {
 		if (rtnName.find("disable_global_injection") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_global_injection,  
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
+							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -591,7 +636,6 @@ namespace TargetInstrumentation {
 		if (rtnName.find("disable_access_instrumentation") != std::string::npos) {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation,  
-							IF_PIN_PRIVATE_LOCKED_COMMA(IARG_THREAD_ID)
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
 							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
@@ -762,7 +806,7 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
-		#if PIN_PRIVATE_LOCKED
+		#if PIN_LOCKED
 			for (const auto& [_, tdata] : PintoolControl::threadControlMap) {
 				tdata->~ThreadControl();
 			}

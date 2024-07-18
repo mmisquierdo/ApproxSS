@@ -61,42 +61,18 @@ constexpr size_t BYTE_SIZE = 8;
 	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && false)
 #endif
 
-#ifndef PIN_SHARED_LOCKED
-	#define PIN_SHARED_LOCKED false
-#endif
-
-#ifndef PIN_PRIVATE_LOCKED
-	#define PIN_PRIVATE_LOCKED (!PIN_SHARED_LOCKED && false)
+#ifndef PIN_LOCKED
+	#define PIN_LOCKED true
 #endif
 
 //USER-DEFINED END
 
-#ifndef PIN_ANY_LOCKED
-	#define PIN_ANY_LOCKED (PIN_SHARED_LOCKED || PIN_PRIVATE_LOCKED)
-#endif
-
-#if PIN_SHARED_LOCKED
-	#define IF_PIN_SHARED_LOCKED(X) X
-	#define IF_PIN_SHARED_LOCKED_COMMA(X) X,
+#if PIN_LOCKED
+	#define IF_PIN_LOCKED(X) X
+	#define IF_PIN_LOCKED_COMMA(X) X,
 #else
-	#define IF_PIN_SHARED_LOCKED(X)
-	#define IF_PIN_SHARED_LOCKED_COMMA(X)
-#endif
-
-#if PIN_PRIVATE_LOCKED
-	#define IF_PIN_PRIVATE_LOCKED(X) X
-	#define IF_PIN_PRIVATE_LOCKED_COMMA(X) X,
-#else
-	#define IF_PIN_PRIVATE_LOCKED(X)
-	#define IF_PIN_PRIVATE_LOCKED_COMMA(X)
-#endif
-
-#if PIN_ANY_LOCKED
-	#define IF_PIN_ANY_LOCKED(X) X
-	#define IF_PIN_ANY_LOCKED_COMMA(X) X,
-#else
-	#define IF_PIN_ANY_LOCKED(X)
-	#define IF_PIN_ANY_LOCKED_COMMA(X)
+	#define IF_PIN_LOCKED(X)
+	#define IF_PIN_LOCKED_COMMA(X)
 #endif
 
 

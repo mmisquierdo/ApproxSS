@@ -135,7 +135,7 @@ class ApproximateBuffer : public Range {
 
 		void NextPeriod(const uint64_t period);
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
-		virtual void RetireBuffer(const bool giveAwayRecords) = 0;
+		virtual bool RetireBuffer(const bool giveAwayRecords) = 0; //return true if it's retired
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) = 0;
@@ -222,7 +222,7 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 
 		virtual void BackupReadData(uint8_t* const data);
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
-		virtual void RetireBuffer(const bool giveAwayRecords);
+		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
@@ -332,7 +332,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 
 
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
-		virtual void RetireBuffer(const bool giveAwayRecords);
+		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled);

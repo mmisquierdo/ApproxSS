@@ -411,7 +411,7 @@ ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
 }
 
 //LOCKED
-void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
+bool ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
@@ -428,8 +428,12 @@ void ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 
 			ApproximateBuffer::GiveAwayRecordsAndBackups(giveAwayRecords);
 
-			this->m_isActive--;
+			return true;
+		} else {
+			return false;
 		}
+	} else {
+		return true;
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -850,7 +854,7 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 }
 
 //LOCKED
-void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
+bool LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
@@ -869,7 +873,13 @@ void LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 			this->StoreCurrentPeriodLog();
 
 			this->GiveAwayRecordsAndBackups(giveAwayRecords);
+			
+			return true;
+		} else {
+			return false;
 		}
+	} else {
+		return true;
 	}
 
 	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
