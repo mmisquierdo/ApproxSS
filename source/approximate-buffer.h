@@ -64,7 +64,7 @@ class ApproximateBuffer : public Range {
 		const size_t m_dataSizeInBytes;
 		const size_t m_minimumReadBackupSize;
 		uint64_t m_creationPeriod;
-		PIN_LOCK m_bufferLock;
+		//PIN_LOCK m_bufferLock;
 		int32_t m_isActive;
 
 		#if DISTANCE_BASED_FAULT_INJECTOR

@@ -75,6 +75,8 @@ constexpr size_t BYTE_SIZE = 8;
 	#define IF_PIN_LOCKED_COMMA(X)
 #endif
 
+#define IF_PIN_PRIVATE_LOCKED(X)
+
 
 #if !DEFAULT_FAULT_INJECTOR && !GRANULAR_FAULT_INJECTOR && !DISTANCE_BASED_FAULT_INJECTOR
 #	error "ApproxSS compilation error: no fault injector defined!"

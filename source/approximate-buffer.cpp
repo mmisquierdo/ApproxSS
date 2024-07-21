@@ -15,7 +15,7 @@ namespace BorrowedMemory {
 	#endif
 }
 
-//LOCKED
+//WAS LOCKED
 ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
 	Range(bufferRange),
 	m_id(id),
@@ -49,11 +49,11 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 		PIN_ExitProcess(EXIT_FAILURE);
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -100,13 +100,13 @@ void ApproximateBuffer::CleanLogs() { //for some reason, just calling .clear wil
 	}
 }
 
-//LOCKED
+//WAS LOCKED
 ApproximateBuffer::~ApproximateBuffer() {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->CleanLogs();
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -133,9 +133,9 @@ void ApproximateBuffer::StoreCurrentPeriodLog() {
 	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
 }
 
-//LOCKED
+//WAS LOCKED
 void ApproximateBuffer::NextPeriod(const uint64_t period) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
 		if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
@@ -152,7 +152,7 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 
 	this->m_periodLog.ResetCounts(period, this->m_faultInjector);
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 uint64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
@@ -404,15 +404,15 @@ ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange,
 													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cend())
 													{}
 
-//LOCKED (INDIRECTLY)
+//WAS LOCKED (INDIRECTLY)
 ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
 	ShortTermApproximateBuffer::RetireBuffer(false);
 	ApproximateBuffer::~ApproximateBuffer();
 }
 
-//LOCKED
+//WAS LOCKED
 bool ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
@@ -436,7 +436,7 @@ bool ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 		return true;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -446,9 +446,9 @@ void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
 	this->m_remainingReads.insert(this->m_readHint, {data, readBackup});
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive == 0) {
 		ApproximateBuffer::ReactivateBuffer(period);
@@ -456,7 +456,7 @@ void ShortTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 
 	this->m_isActive++;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -621,11 +621,11 @@ void ShortTermApproximateBuffer::InvalidateRemainingRead(uint8_t * const initial
 	}
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += accessSize;
 
@@ -642,10 +642,10 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAd
 		}
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	if (this->IsIgnorableMisaligned(accessedAddress, accessSize)) {
 		return;
@@ -656,12 +656,12 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * co
 		return;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled));
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += this->m_dataSizeInBytes;
 
@@ -677,9 +677,9 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * 
 	}
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
 
@@ -688,14 +688,14 @@ void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERA
 		this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, shouldInject);
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += accessSize;
 	
@@ -717,10 +717,10 @@ void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAdd
 		#endif
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	if (this->IsIgnorableMisaligned(accessedAddress, accessSize)) {
 		return;
@@ -731,9 +731,9 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * con
 		return;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled));
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -757,9 +757,9 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 	}
 }
 
-//LOCKED
+//WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
 
@@ -768,24 +768,24 @@ void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAN
 		this->HandleMemoryReadSingleElementUnsafe(accessedAddress, shouldInject);
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 /* ==================================================================== */
 /* Long Term Approximate Buffer											*/
 /* ==================================================================== */
 
-//LOCKED
+//WAS LOCKED
 LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 						  	const InjectionConfigurationReference& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
 	
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->InitializeRecordsAndBackups(creationPeriod);
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED (INDIRECTLY)
+//WAS LOCKED (INDIRECTLY)
 LongTermApproximateBuffer::~LongTermApproximateBuffer() {
 	LongTermApproximateBuffer::RetireBuffer(false);
 	ApproximateBuffer::~ApproximateBuffer();
@@ -853,9 +853,9 @@ void LongTermApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRec
 	}
 }
 
-//LOCKED
+//WAS LOCKED
 bool LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
@@ -882,12 +882,12 @@ bool LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 		return true;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	if (this->m_isActive == 0) { //failsafe againt repeated reactivations
 		ApproximateBuffer::ReactivateBuffer(period);
@@ -896,7 +896,7 @@ void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 
 	this->m_isActive++;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -1010,13 +1010,13 @@ void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementInd
 	#endif
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	const size_t accessedElementCount = accessSize / this->m_dataSizeInBytes;
 	const size_t endElementIndex = firstElementIndex + accessedElementCount;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += accessSize;
 
@@ -1027,11 +1027,11 @@ void LongTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAdd
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	if (this->IsIgnorableMisaligned(accessedAddress, accessSize)) {
 		return;
@@ -1042,9 +1042,9 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * con
 		return;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled));
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
@@ -1056,9 +1056,9 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * c
 	this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
@@ -1072,16 +1072,16 @@ void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAN
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	uint8_t* currentAddress = initialAddress;
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += accessSize;
 
@@ -1097,10 +1097,10 @@ void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddr
 		}
 	#endif
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled) {
 	if (this->IsIgnorableMisaligned(accessedAddress, accessSize)) {
 		return;
@@ -1111,9 +1111,9 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * cons
 		return;
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled));
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
@@ -1130,9 +1130,9 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 	#endif
 }
 
-//LOCKED
+//WAS LOCKED
 void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
-	IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
@@ -1151,5 +1151,5 @@ void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND
 		#endif
 	}
 
-	IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
