@@ -108,6 +108,15 @@ struct AccessTypes {
 	static constexpr size_t Size	= 2;
 };
 
+struct AccessPrecision {
+	static constexpr size_t Precise		= 0;
+	static constexpr size_t Approximate	= 1;
+	static constexpr size_t Size		= 2;
+};
+
+const std::array<const std::string, AccessPrecision::Size> AccessPrecisionNames = {"Precise", "Approximate"};
+
+
 const std::array<const std::string, AccessTypes::Size> AccessTypesNames = {"Read", "Write"};
 
 #endif /* COMPILING_OPTIONS_H */

@@ -745,8 +745,8 @@ namespace PintoolOutput {
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
 
-		std::array<uint64_t, AccessTypes::Size> totalTargetAccessesBytes;
-		std::fill_n(totalTargetAccessesBytes.data(), AccessTypes::Size, 0);
+		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> totalTargetAccessesBytes;
+		std::fill_n(totalTargetAccessesBytes.data(), AccessPrecision::Size * AccessTypes::Size, 0);
 
 		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
 			approxBuffer->WriteAccessLogToFile(PintoolOutput::accessLog, totalTargetAccessesBytes, totalTargetInjections);
@@ -754,9 +754,11 @@ namespace PintoolOutput {
 
 		uint64_t totalAccesses = 0;
 		PintoolOutput::accessLog << std::endl;
-		for (size_t i = 0; i < AccessTypes::Size; ++i) {
-			PintoolOutput::accessLog << "Total Software Implementation " << AccessTypesNames[i] << " Bytes/Bits: " << totalTargetAccessesBytes[i] << " / " << (totalTargetAccessesBytes[i] * BYTE_SIZE) << std::endl;
-			totalAccesses += totalTargetAccessesBytes[i];
+		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+			for (size_t j = 0; j < AccessTypes::Size; ++j) {
+				PintoolOutput::accessLog << "Total Software Implementation " << AccessPrecisionNames[i] << " " << AccessTypesNames[j] << " Bytes/Bits: " << totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
+				totalAccesses += totalTargetAccessesBytes[i][j];
+			}
 		}
 		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
 

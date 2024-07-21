@@ -119,8 +119,8 @@ class ApproximateBuffer : public Range {
 		bool IsMisaligned(uint8_t const * const address) const; 
 		size_t GetAlignmentOffset(uint8_t const * const address) const;
 
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) = 0;
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) = 0;
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) = 0;
 
 	public:
 		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
@@ -146,7 +146,7 @@ class ApproximateBuffer : public Range {
 		int64_t GetConfigurationId() const;
 
 		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
-		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
+		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding = "") const;
 };
 
@@ -212,8 +212,8 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 			static uint64_t* GetWriteErrorsLogFromIterator(const PendingWrites::const_iterator& it);
 		#endif
 
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled);
 	
 	public:
 		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
@@ -316,8 +316,8 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		void ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject);
 		void ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject);
 
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject);
+		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled);
+		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled);
 
 	public:
 		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,

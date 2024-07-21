@@ -341,15 +341,15 @@ void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std
 }
  
 
-void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
+void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
 	this->WriteLogHeaderToFile(outputLog, basePadding);
 
 	uint64_t activePeriodsCount	= 0;
-	std::array<uint64_t, AccessTypes::Size> bufferAccessedBytes;
-	std::fill_n(bufferAccessedBytes.data(), AccessTypes::Size, 0);
+	std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
+	std::fill_n(bufferAccessedBytes.data(), AccessPrecision::Size * AccessTypes::Size, 0);
 
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;
@@ -358,9 +358,11 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 
 	outputLog << padding << "BUFFER TOTALS" << std::endl;
 
-	for (size_t i = 0; i < AccessTypes::Size; ++i) {
-		WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i], AccessTypesNames[i], "Buffer", padding);
-		totalTargetAccessesBytes[i] += bufferAccessedBytes[i];
+	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+		for (size_t j = 0; j < AccessTypes::Size; ++j) {
+			WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i][j], AccessTypesNames[j], "Buffer " + AccessPrecisionNames[i], padding);
+			totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
+		}
 	}
 
 	outputLog << padding << "Buffer Active Periods: " << activePeriodsCount << std::endl;
@@ -627,7 +629,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAd
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += accessSize;
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Write, accessSize);
 
 	this->InvalidateRemainingRead(initialAddress, finalAddress);
 
@@ -657,21 +659,21 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * co
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled));
+	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //WAS LOCKED
-void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += this->m_dataSizeInBytes;
+void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Write, this->m_dataSizeInBytes);
 
 	this->InvalidateRemainingRead(accessedAddress);
 
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->UpdateLastAccessPeriod(accessedAddress);
 	#endif
-	
-	if (shouldInject) {
+
+	if (this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled)) {
 		PendingWrites::const_iterator hint = this->m_pendingWrites.lower_bound(accessedAddress);
 		this->RecordFaultyWrite(accessedAddress, hint);
 	}
@@ -681,11 +683,9 @@ void ShortTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * 
 void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
-
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
 		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
-		this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, shouldInject);
+		this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -697,7 +697,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAdd
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += accessSize;
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Read, accessSize);
 	
 	this->m_readHint = this->ReverseFaultyRead(initialAddress, finalAddress);
 
@@ -732,13 +732,13 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * con
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled));
+	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
-void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += this->m_dataSizeInBytes;
+void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Read, this->m_dataSizeInBytes);
 
 	this->m_readHint = this->ReverseFaultyRead(accessedAddress);
 
@@ -748,7 +748,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 		this->ApplyPassiveFault(accessedAddress);
 	#endif
 
-	if (shouldInject) {		
+	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled)) {		
 		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		#else
@@ -761,11 +761,9 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 void ShortTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
-
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
 		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i); //it could also be implemented in something along the lines of SIMD version, but it'd also trigger pendings and remainings in between, also i'm lazy right now and don't even know why i still maintain this term approach
-		this->HandleMemoryReadSingleElementUnsafe(accessedAddress, shouldInject);
+		this->HandleMemoryReadSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
@@ -1018,7 +1016,7 @@ void LongTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAdd
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += accessSize;
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Write, accessSize);
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
@@ -1043,14 +1041,15 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * con
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled));
+	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += this->m_dataSizeInBytes;
+void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Write, this->m_dataSizeInBytes);
 
 	const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
 	this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
@@ -1060,7 +1059,7 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * c
 void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Write] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Write, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled);
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
@@ -1083,7 +1082,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddr
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += accessSize;
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Read, accessSize);
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled); 
 
@@ -1112,14 +1111,15 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * cons
 	}
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled));
+	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled);
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
-void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool shouldInject) {
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += this->m_dataSizeInBytes;
+void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Read, this->m_dataSizeInBytes);
 
 	const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
 
 	this->ProcessReadMemoryElement(elementIndex, accessedAddress, shouldInject);
 
@@ -1134,7 +1134,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled) {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
-	this->m_periodLog.m_accessedBytesCount[AccessTypes::Read] += (this->m_dataSizeInBytes * memOpInfo->NumOfElements());
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled, AccessTypes::Read, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled);
 
