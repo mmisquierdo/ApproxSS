@@ -6,7 +6,7 @@
 
 #include "compiling-options.h"
 
-struct ConsumptionType {
+struct ConsumptionType { 
 	static constexpr size_t Reference =		0;
 	static constexpr size_t Approximate =	1; 
 	static constexpr size_t Size =			2;

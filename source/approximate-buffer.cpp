@@ -349,7 +349,7 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 
 	uint64_t activePeriodsCount	= 0;
 	std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
-	std::fill_n(bufferAccessedBytes.data(), AccessPrecision::Size * AccessTypes::Size, 0);
+	std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;

@@ -32,7 +32,7 @@ PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &i
 
 void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	this->m_period = period;
-	std::fill_n(this->m_accessedBytesCount.data(), AccessPrecision::Size * AccessTypes::Size, 0);
+	std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -76,7 +76,7 @@ void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::strin
 }
 
 #if LOG_FAULTS
-	uint64_t *PeriodLog::GetErrorCountsByBit(const size_t errorCat) const {
+	uint64_t* PeriodLog::GetErrorCountsByBit(const size_t errorCat) const {
 		return this->m_errorsCountsByBit[errorCat].get();
 	}
 
@@ -144,13 +144,19 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 }
 
 void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
+	//precise access
+	for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
+		this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, ConsumptionType::Reference, accessType, this->m_accessedBytesCount[AccessPrecision::Precise][accessType]);
+	}
+	
+	//approximate access
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
 		for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
-			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[AccessPrecision::Approximate][accessType]); //TODO: fix calculation to account for precise access
+			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[AccessPrecision::Approximate][accessType]);
 		}
 
 		#if ENABLE_PASSIVE_INJECTION
-			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, ErrorCategory::Passive, this->m_accessedBytesCount[ErrorCategory::Passive]); //TODO: fix this shit, there's not accessedBytes for Passive! use bufferSizeInBytes!
+			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, ErrorCategory::Passive, bufferSizeInBytes);
 		#endif
 	}
 }

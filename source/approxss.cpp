@@ -102,9 +102,9 @@ class ThreadControl {
 	bool HasActiveBuffer() const {
 		return 
 		#if MULTIPLE_ACTIVE_BUFFERS
-			(!PintoolControl::g_mainThreadControl.m_activeBuffers.empty())
+			(!this->m_activeBuffers.empty())
 		#else
-			(PintoolControl::g_mainThreadControl.m_activeBuffer)
+			(this->g_mainThreadControl.m_activeBuffer)
 		#endif
 		;
 	}
@@ -211,7 +211,6 @@ namespace PintoolControl {
 
 	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
 		const Range range = Range(start_address, end_address);
-
 		
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
@@ -268,7 +267,7 @@ namespace PintoolControl {
 				#if MULTIPLE_ACTIVE_BUFFERS
 					const ActiveBuffers::const_iterator lbActiveLocal = localThread.m_activeBuffers.lower_bound(range);
 					if (!((lbActiveLocal != localThread.m_activeBuffers.cend()) && !(localThread.m_activeBuffers.key_comp()(range, lbActiveLocal->first)))) { //only inserts if it wasn't found (done like this to avoid possible memory leaks from the new's in case there's a overlap)
-						ChosenTermApproximateBuffer* const approxBuffer = lbActiveMain->second.get();
+						ChosenTermApproximateBuffer* const approxBuffer = lbActiveMain->second;
 						approxBuffer->ReactivateBuffer(g_currentPeriod);
 						localThread.m_activeBuffers.insert(lbActiveLocal, {range, approxBuffer});
 					}
@@ -637,25 +636,27 @@ namespace TargetInstrumentation {
 			return;
 		}
 
-		if (rtnName.find("disable_access_instrumentation") != std::string::npos) {
-			RTN_Open(rtn);
-			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation,  
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 6, 
-							IARG_END);
-			RTN_Close(rtn);
-			return;
-		}
+		#if NARROW_ACCESS_INSTRUMENTATION
+			if (rtnName.find("disable_access_instrumentation") != std::string::npos) {
+				RTN_Open(rtn);
+				RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation,  
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
+								IARG_FUNCARG_ENTRYPOINT_VALUE, 6, 
+								IARG_END);
+				RTN_Close(rtn);
+				return;
+			}
 
-		if (rtnName.find("enable_access_instrumentation") != std::string::npos) {
-			SET_ACCESS_INSTRUMENTATION_STATUS(true)
-			return;
-		}
+			if (rtnName.find("enable_access_instrumentation") != std::string::npos) {
+				SET_ACCESS_INSTRUMENTATION_STATUS(true)
+				return;
+			}
+		#endif
 	}
 }
 
@@ -746,7 +747,7 @@ namespace PintoolOutput {
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
 
 		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> totalTargetAccessesBytes;
-		std::fill_n(totalTargetAccessesBytes.data(), AccessPrecision::Size * AccessTypes::Size, 0);
+		std::fill_n(&(totalTargetAccessesBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
 		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
 			approxBuffer->WriteAccessLogToFile(PintoolOutput::accessLog, totalTargetAccessesBytes, totalTargetInjections);
