@@ -3,7 +3,7 @@
 PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 	this->m_period = other.m_period;
 
-	std::copy_n(other.m_accessedBytesCount.data(), AccessPrecision::Size * AccessTypes::Size, this->m_accessedBytesCount.data());
+	std::copy_n(&(other.m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, &(this->m_accessedBytesCount[0][0]));
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {

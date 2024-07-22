@@ -230,7 +230,7 @@ namespace PintoolControl {
 				#if MULTIPLE_ACTIVE_BUFFERS
 					ChosenTermApproximateBuffer* const approxBuffer = lbGeneral->second.get();
 					approxBuffer->ReactivateBuffer(g_currentPeriod);
-					mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});
+					lbActiveMain = mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});
 				#else
 					mainThread.m_activeBuffer = lbGeneral->second.get();
 					mainThread.m_activeBuffer->ReactivateBuffer(g_currentPeriod);
@@ -309,7 +309,7 @@ namespace PintoolControl {
 				}
 			#endif
 			  else {
-				std::cout << "ApproxSS Warning: approximate buffer not found for removal in " << threadId << ". Ignorning request." << std::endl;
+				std::cout << "ApproxSS Warning: approximate buffer not found for removal in thread" << threadId << ". Ignorning request." << std::endl;
 			}
 		#endif
 		}
