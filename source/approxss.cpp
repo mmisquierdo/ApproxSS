@@ -104,7 +104,7 @@ class ThreadControl {
 		#if MULTIPLE_ACTIVE_BUFFERS
 			(!this->m_activeBuffers.empty())
 		#else
-			(this->g_mainThreadControl.m_activeBuffer)
+			(this->m_activeBuffer)
 		#endif
 		;
 	}
@@ -453,7 +453,7 @@ namespace AccessHandler {
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
-				ChosenTermApproximateBuffer& const approxBuffer = *(mainThread.m_activeBuffer);
+				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
 
 				(approxBuffer.*function)(memOpInfo, AccessHandler::ShouldInject(IF_PIN_LOCKED_COMMA(threadId) IF_PIN_LOCKED(range)));		
 			}
