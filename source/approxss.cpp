@@ -391,7 +391,10 @@ namespace AccessHandler {
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
-		const Range range = Range(accessedAddress, accessedAddress);
+
+		#if MULTIPLE_ACTIVE_BUFFERS || PIN_LOCKED
+			const Range range = Range(accessedAddress, accessedAddress);
+		#endif
 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator it =  mainThread.m_activeBuffers.find(range);
@@ -440,8 +443,11 @@ namespace AccessHandler {
 		
 		uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
-		const Range range = Range(accessedAddress, accessedAddress);
 
+		#if MULTIPLE_ACTIVE_BUFFERS || PIN_LOCKED
+			const Range range = Range(accessedAddress, accessedAddress);
+		#endif
+		
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 		
 		#if MULTIPLE_ACTIVE_BUFFERS
