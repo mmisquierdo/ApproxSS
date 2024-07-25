@@ -309,7 +309,7 @@ namespace PintoolControl {
 				}
 			#endif
 			  else {
-				std::cout << "ApproxSS Warning: approximate buffer not found for removal in thread" << threadId << ". Ignorning request." << std::endl;
+				std::cout << "ApproxSS Warning: approximate buffer not found for removal in thread " << threadId << ". Ignorning request." << std::endl;
 			}
 		#endif
 		}
