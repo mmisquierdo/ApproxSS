@@ -17,6 +17,11 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 			}
 
 			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
+
+			if (!FaultInjector::ShouldGoOn(ber)) {
+				return;
+			}
+
 			constexpr size_t countStart = 1;
 		#else
 			constexpr size_t countStart = 0;
@@ -52,6 +57,11 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 			}
 
 			data[0] = data[0] & FaultInjector::bitDroppingMask; //always sets first bit to zero
+
+			if (!FaultInjector::ShouldGoOn(ber)) {
+				return;
+			}
+
 			constexpr size_t countStart = 1;
 		#else
 			constexpr size_t countStart = 0;

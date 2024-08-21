@@ -26,7 +26,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef MULTIPLE_ACTIVE_BUFFERS
-	#define MULTIPLE_ACTIVE_BUFFERS false
+	#define MULTIPLE_ACTIVE_BUFFERS true
 #endif
 
 #ifndef NARROW_ACCESS_INSTRUMENTATION
