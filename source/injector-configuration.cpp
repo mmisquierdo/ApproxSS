@@ -24,16 +24,28 @@ ErrorType InjectionConfigurationBase::GetZeroBerValue() {
 InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurationReference& other) {
 	this->m_configurationId = other.GetConfigurationId();
 	this->m_bitDepth = other.GetBitDepth();
+
+	#if LS_BIT_DROPPING
+		this->m_LSBDropped = other.GetLSBDropped();
+	#endif
 }
 
 InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurationBase& other) {
 	this->m_configurationId = other.GetConfigurationId();
 	this->m_bitDepth = other.GetBitDepth();
+
+	#if LS_BIT_DROPPING
+		this->m_LSBDropped = other.GetLSBDropped();
+	#endif
 }
 
 InjectionConfigurationBase::InjectionConfigurationBase() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;
+
+	#if LS_BIT_DROPPING
+		this->m_LSBDropped = 0;
+	#endif
 }
 
 int64_t InjectionConfigurationBase::GetConfigurationId() const {
@@ -43,6 +55,18 @@ int64_t InjectionConfigurationBase::GetConfigurationId() const {
 size_t InjectionConfigurationBase::GetBitDepth() const {
 	return this->m_bitDepth;
 }
+
+#if LS_BIT_DROPPING
+	size_t InjectionConfigurationBase::GetLSBDropped() const {
+		return this->m_LSBDropped;
+	}
+
+	void InjectionConfigurationBase::SetLSBDropped(const size_t lsbDropped) {
+		this->m_LSBDropped = lsbDropped;
+
+		//todo: add check againt bitDepth?
+	}
+#endif
 
 void InjectionConfigurationBase::SetBitDepth(const size_t bitDepth) {
 	this->m_bitDepth = bitDepth;
@@ -117,6 +141,10 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 	s += lineStart + "ConfigurationId: "	+ std::to_string(this->GetConfigurationId())	+ "\n";
 	s += lineStart + "BitDepth: "			+ std::to_string(this->GetBitDepth())			+ "\n";
 
+	#if LS_BIT_DROPPING
+		s += lineStart + "LSBDropped: "		+ std::to_string(this->GetLSBDropped())			+ "\n";
+	#endif
+
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		s += lineStart + ErrorCategoryNames[errorCat] + "Ber: "
 			+ InjectionConfigurationReference::BerToString(this->m_bers[errorCat])
@@ -189,6 +217,10 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 	InjectionConfigurationLocal::InjectionConfigurationLocal(const InjectionConfigurationReference& reference) /*: InjectionConfigurationBase(reference)*/ {
 		this->m_configurationId = reference.GetConfigurationId(); //TODO: fix this shit! for some reason it would only call the InjectionConfigurationBase default constructor, why?????
 		this->m_bitDepth = reference.GetBitDepth();
+
+		#if LS_BIT_DROPPING
+			this->m_LSBDropped = reference.GetLSBDropped();
+		#endif
 		
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_bers[i] = reference.GetBer(i);

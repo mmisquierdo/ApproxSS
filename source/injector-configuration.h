@@ -42,6 +42,10 @@ class InjectionConfigurationBase {
 		int64_t m_configurationId;
 		size_t m_bitDepth;
 
+		#if LS_BIT_DROPPING
+			size_t m_LSBDropped;
+		#endif
+
 		//CHANGE InjectionConfigurationLocal initializer if you add members	
 
 	public:
@@ -52,6 +56,11 @@ class InjectionConfigurationBase {
 
 		int64_t GetConfigurationId() const;
 		size_t GetBitDepth() const;
+
+		#if LS_BIT_DROPPING
+			size_t GetLSBDropped() const;
+			void SetLSBDropped(const size_t lsbDropped);
+		#endif
 
 		void SetConfigurationId(const int64_t id);
 		void SetBitDepth(const size_t bitDepth);

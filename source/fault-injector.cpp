@@ -62,7 +62,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 				return;
 			}
 
-			constexpr size_t countStart = 1;
+			const size_t countStart = this->GetLSBDropped();;
 		#else
 			constexpr size_t countStart = 0;
 		#endif
