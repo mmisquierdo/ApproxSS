@@ -57,7 +57,7 @@ constexpr size_t BYTE_SIZE = 8;
 	#define LOG_FAULTS true
 #endif
 
-#ifndef LS_BIT_DROPPING //premilinary version. NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER ERRORS //TODO: take it as input from injector configuration // KNOWN_BUG: no bitdrop if BER is 0;
+#ifndef LS_BIT_DROPPING //NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER WRITE ERRORS
 	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && true)
 #endif
 
