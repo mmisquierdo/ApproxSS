@@ -62,9 +62,20 @@ size_t InjectionConfigurationBase::GetBitDepth() const {
 	}
 
 	void InjectionConfigurationBase::SetLSBDropped(const size_t lsbDropped) {
-		this->m_LSBDropped = lsbDropped;
+		if (lsbDropped >= BYTE_SIZE) {
+			std::cerr << "ApproxSS Error: LSB-Dropping more than 8 bits is unsupported."  << std::endl;
+			PIN_ExitProcess(EXIT_FAILURE);
+		}
 
-		//todo: add check againt bitDepth?
+		if (lsbDropped >= this->GetBitDepth()) {
+			std::cerr << "ApproxSS Warning: LSB-Dropping (" << lsbDropped << " bits) more than the set BitDepth (" << this->GetBitDepth() << " bits)." << std::endl;
+		}
+
+		this->m_LSBDropped = lsbDropped;
+	}
+
+	bool InjectionConfigurationBase::HasLSBDropping() const {
+		return this->GetLSBDropped() != 0;
 	}
 #endif
 
@@ -235,6 +246,10 @@ void InjectionConfigurationLocal::ReviseShouldGoOn(const size_t errorCat) {
 		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
 	#else
 		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat));
+	#endif
+
+	#if LS_BIT_DROPPING
+		this->m_shouldGoOn[errorCat] = this->m_shouldGoOn[errorCat] || this->HasLSBDropping();
 	#endif
 }
 

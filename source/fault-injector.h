@@ -25,7 +25,7 @@ class FaultInjector : public InjectionConfigurationLocal {
 	protected: 
 		static std::uniform_real_distribution<double> occurrenceDistribution;
 		static constexpr uint8_t bitMask = 0b01;
-		static constexpr uint8_t bitDroppingMask = 0b11111110;
+		static constexpr uint8_t bitDroppingMask = std::numeric_limits<uint8_t>::max();
 	public:
 		static std::default_random_engine generator;
 

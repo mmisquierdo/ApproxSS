@@ -17,6 +17,7 @@
 enum class InjectorFieldCode {
 	ConfigurationId,
 	BitDepth,
+	LSBDropped,
 	ReadBer,
 	WriteBer,
 	PassiveBer,
@@ -25,6 +26,7 @@ enum class InjectorFieldCode {
 
 const std::unordered_map<InjectorFieldCode, const std::string> InjectorFieldCodeNames = {	{InjectorFieldCode::ConfigurationId,	"ConfigurationId"},
 																							{InjectorFieldCode::BitDepth,			"BitDepth"},
+																							{InjectorFieldCode::LSBDropped,			"LSBDropped"},
 																							{InjectorFieldCode::ReadBer,			"ReadBer"},
 																							{InjectorFieldCode::WriteBer,			"WriteBer"},
 																							{InjectorFieldCode::PassiveBer,			"PassiveBer"}};

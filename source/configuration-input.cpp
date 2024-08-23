@@ -283,7 +283,7 @@ bool PintoolInput::GetNextValidLine(std::ifstream& inputFile, std::string& line,
 	return readSuccess;
 }
 
-void PintoolInput::ProcessInjectorConfiguration(const std::string& configurationFilename) { //TODO: tornar configurações normais e de distancia incompativeis entre si
+void PintoolInput::ProcessInjectorConfiguration(const std::string& configurationFilename) { //TODO?: tornar configurações normais e de distancia incompativeis entre si
 	std::ifstream inputFile(configurationFilename);
 
 	if (!inputFile) {
@@ -332,6 +332,20 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 					injectorCfg->SetBitDepth(static_cast<size_t>(bitDepthValue));
 				}
 				break;
+			case InjectorFieldCode::LSBDropped:
+				#if LS_BIT_DROPPING
+					{
+						const int64_t LSBDropped = std::stoll(value);
+						if (LSBDropped < 0) {
+							std::cerr << "ApproxSS Error: LSBDropped must be positive. Line: \"" << lineCount << "\". Found: " << LSBDropped << "." << std::endl;
+							PIN_ExitProcess(EXIT_FAILURE);
+						}
+						injectorCfg->SetLSBDropped(static_cast<size_t>(LSBDropped));
+					}
+				#else
+					std::cout << "ApproxSS warning: LSB-Dropping value detected, but feature not supported in current compilation. Revise \"compiling-options.h\"." << std::endl;
+				#endif
+				break;
 			case InjectorFieldCode::ReadBer:
 				PintoolInput::ProcessBerConfiguration(value, lineCount, *injectorCfg, ErrorCategory::Read);
 				break;
@@ -352,6 +366,8 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 		}
 	}
 
+	delete injectorCfg;
+	injectorCfg = nullptr;
 	inputFile.close();
 
 	std::cout << std::string(50, '#') << std::endl;

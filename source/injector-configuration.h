@@ -2,6 +2,8 @@
 #define INJECTOR_CONFIGURATION_H
 
 #include <string>
+#include <iostream> 
+#include "pin.H"
 #include <cstdint>
 #include <memory>
 #include <map>
@@ -60,6 +62,7 @@ class InjectionConfigurationBase {
 		#if LS_BIT_DROPPING
 			size_t GetLSBDropped() const;
 			void SetLSBDropped(const size_t lsbDropped);
+			bool HasLSBDropping() const;
 		#endif
 
 		void SetConfigurationId(const int64_t id);

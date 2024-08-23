@@ -185,7 +185,7 @@ size_t ApproximateBuffer::GetTotalNecessaryReadBackupSize() const {
 
 //MUST LOCK
 bool ApproximateBuffer::GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled) const {
-	return isThreadInjectionEnabled && (this->m_faultInjector.GetShouldGoOn(errorCat) || LS_BIT_DROPPING); 
+	return isThreadInjectionEnabled && this->m_faultInjector.GetShouldGoOn(errorCat); 
 }
 
 size_t ApproximateBuffer::GetIndexFromAddress(uint8_t const * const address) const {

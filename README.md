@@ -64,6 +64,8 @@ In terms of implementation, the random number generator used by the error inject
 
 12. PIN_LOCKED: This flag enables safe approximation of multithreaded target applications, adding the necessary mutexes. The addition and control of approximate buffers is made on an individual thread level, allowing one thread to access the data precisely and another, approximatly. Additionally, two or more threads can have the same approximate buffer - however, as of the current version, they must have the same configuration.
 
+13. LS_BIT_DROPPING: enables the dropping of N least significante bits (up to 8) from elements of approximate buffers. N can be input in the injection configurations.
+
 ## Instrumentation Markers
 
 To enable and control ApproxSS operation, some instrumentation markers must be added in the target application source code. These markers are dummy routines, which don't necessarily perform some useful function within the target application. However, thanks to their names, when they are found by Pin instrumentation, they trigger the insertion of calls to control functions over approximate buffers and error injection.
@@ -196,19 +198,24 @@ As input, ApproxSS must necesseraly receive a file containing the configurations
 
 ```
 (ConfigurationId: {x ∈ int64_t}
-BitDepth:   {x ∈ size_t | 0 < x}
+BitDepth:   {x ∈ size_t | x > 0}
+LSBDropped: {x ∈ size_t | x ≥ 0}
 ReadBer:    ({x ∈ double | 0.0 ≤ x < 1.0};)1|+
 WriteBer:   ({x ∈ double | 0.0 ≤ x < 1.0};)1|+
 PassiveBer: ({x ∈ double | 0.0 ≤ x < 1.0};)1|+
 ADD_BUFFER)1|+
 ```
 
-The configuration starts with the _ConfigurationId_, which serves as the configuration identifier and can be any value representable by a signed 64-bit integer (int64_t). Followed by _BitDepth_, the bit length that limits up to which bit of the accessed memory element the error injection can be performed, and can be any value above 0 representable by an unsigned 64-bit integer (size_t). However, trying to use an injector configuration with an approximate buffer whose stored indidivual element size is less than the _BitDepth_ will result in an exception being raised, interrupting the execution of both Pin and target application. _ReadBer_, _WriteBer_, and _PassiveBer_ determine the read, write, and passive BERs, respectively. They are 64-bit (double) floating point numbers, must be in the range [0,0, 1,0) and have a semicolon (;) at the end. If the MULTIPLE_BER_CONFIGURATION flag was active during the ApproxSS compilation,  _ReadBer_, _WriteBer_, and _PassiveBer_ can have several BER values. If DISTANCE_BASED_FAULT_INJECTOR is enabled, instead of the rates, BERs must be the mean and standard deviation of the distance between errors.
+The configuration starts with the _ConfigurationId_, which serves as the configuration identifier and can be any value representable by a signed 64-bit integer (int64_t). 
+Followed by _BitDepth_, the bit length that limits up to which bit of the accessed memory element the error injection can be performed, and can be any value above 0 representable by an unsigned 64-bit integer (size_t). However, trying to use an injector configuration with an approximate buffer whose stored indidivual element size is less than the _BitDepth_ will result in an exception being raised, interrupting the execution of both Pin and target application.
+_LSBDropped_ determines how many of the least significant bits will be dropped from the element (up to 8 bits), defaulting affected bits to 0.
+_ReadBer_, _WriteBer_, and _PassiveBer_ determine the read, write, and passive BERs, respectively. They are 64-bit (double) floating point numbers, must be in the range [0,0, 1,0) and have a semicolon (;) at the end. If the MULTIPLE_BER_CONFIGURATION flag was active during the ApproxSS compilation,  _ReadBer_, _WriteBer_, and _PassiveBer_ can have several BER values. If DISTANCE_BASED_FAULT_INJECTOR is enabled, instead of the rates, BERs must be the mean and standard deviation of the distance between errors.
 _PassiveBer_ is optional when ENABLE_PASSIVE_INJECTION is _false_, ending up ignored. And finally, ADD_BUFFER signals the end of the configuration in question. Several injector configurations can be specified, as long as they have different _ConfigurationIds_. If any are repeated, their configuration will be ignored and will not be added.
 
 ```
 ConfigurationId: 0
 BitDepth:        8
+LSBDropped:      1
 ReadBer:         10E-04;
 WriteBer:        10E-05;
 PassiveBer:      10E-06;
@@ -216,6 +223,7 @@ ADD_BUFFER
 
 ConfigurationId: 1
 BitDepth:        10
+LSBDropped:      0
 ReadBer:         10E-05; 10E-04;
 WriteBer:        10E-06;
 PassiveBer:      10E-07;
