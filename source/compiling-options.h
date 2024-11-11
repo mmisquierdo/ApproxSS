@@ -70,9 +70,11 @@ constexpr size_t BYTE_SIZE = 8;
 #if PIN_LOCKED
 	#define IF_PIN_LOCKED(X) X
 	#define IF_PIN_LOCKED_COMMA(X) X,
+	#define IF_COMMA_PIN_LOCKED(X) ,X
 #else
 	#define IF_PIN_LOCKED(X)
 	#define IF_PIN_LOCKED_COMMA(X)
+	#define IF_COMMA_PIN_LOCKED(X)
 #endif
 
 #define IF_PIN_PRIVATE_LOCKED(X)

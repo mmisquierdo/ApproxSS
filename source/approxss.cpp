@@ -372,7 +372,7 @@ namespace PintoolControl {
 /* ==================================================================== */
 
 namespace AccessHandler {
-	static bool ShouldInject(IF_PIN_LOCKED_COMMA(const THREADID threadId) IF_PIN_LOCKED(const Range& range)) {
+	/*static bool ShouldInject(IF_PIN_LOCKED_COMMA(const THREADID threadId) IF_PIN_LOCKED(const Range& range)) {
 		#if PIN_LOCKED
 			const ThreadControl& localThread = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 			return localThread.HasActiveBuffer() && localThread.isThreadInjectionEnabled() && localThread.IsPresent(range);
@@ -380,9 +380,24 @@ namespace AccessHandler {
 			const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 			return mainThread.isThreadInjectionEnabled();
 		#endif
+	}*/
+	static const ThreadControl& GetInterestThreadControl(IF_PIN_LOCKED(const THREADID threadId)) {
+		#if PIN_LOCKED
+			return *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
+		#else
+			return mainThread;
+		#endif
 	}
 
-	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+	static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
+		#if PIN_LOCKED
+			return threadControl.IsPresent(range);
+		#else
+			return true;
+		#endif
+	}
+
+	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -401,12 +416,14 @@ namespace AccessHandler {
 			const ActiveBuffers::const_iterator it =  mainThread.m_activeBuffers.find(range);
 			if (it != mainThread.m_activeBuffers.cend()) {
 				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
-				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, AccessHandler::ShouldInject(IF_PIN_LOCKED_COMMA(threadId) IF_PIN_LOCKED(range)));
+				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
 				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
-				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, AccessHandler::ShouldInject(IF_PIN_LOCKED_COMMA(threadId) IF_PIN_LOCKED(range)));
+				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
 		#endif
 
@@ -431,7 +448,7 @@ namespace AccessHandler {
 		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool IF_COMMA_PIN_LOCKED(const bool)), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -456,13 +473,17 @@ namespace AccessHandler {
 			if (it != mainThread.m_activeBuffers.cend()) {
 				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
 
-				(approxBuffer.*function)(memOpInfo, AccessHandler::ShouldInject(IF_PIN_LOCKED_COMMA(threadId) IF_PIN_LOCKED(range)));		
+				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+
+				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
 				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
 
-				(approxBuffer.*function)(memOpInfo, AccessHandler::ShouldInject(IF_PIN_LOCKED_COMMA(threadId) IF_PIN_LOCKED(range)));		
+				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+
+				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
 		#endif
 
@@ -811,7 +832,7 @@ namespace PintoolOutput {
 
 		PintoolOutput::energyConsumptionLog << std::endl << "TARGET APPLICATION TOTAL ENERGY CONSUMPTION" << std::endl;
 		WriteEnergyConsumptionToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
-		WriteEnergyConsumptionSavingsToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
+		//WriteEnergyConsumptionSavingsToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
 
 		PintoolOutput::accessLog.close();
 	}

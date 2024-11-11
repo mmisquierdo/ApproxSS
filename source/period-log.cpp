@@ -47,8 +47,16 @@ void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationL
 	#endif
 }
 
-void PeriodLog::IncreaseAccess(const bool precision, const size_t type, const size_t size /*in bytes*/) {
-	this->m_accessedBytesCount[precision][type] += size;
+void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/) {
+	#if PIN_LOCKED
+		if (isBufferInThread) {
+	#endif
+
+	this->m_accessedBytesCount[isThreadInjectionEnabled][type] += size;
+
+	#if PIN_LOCKED
+		}
+	#endif
 }
 
 bool PeriodLog::IsVirgin() const {
@@ -145,14 +153,14 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 
 void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
 	//precise access
-	for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
-		this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, ConsumptionType::Reference, accessType, this->m_accessedBytesCount[AccessPrecision::Precise][accessType]);
-	}
+	/*for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
+			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, ConsumptionType::Reference, accessType, this->m_accessedBytesCount[AccessPrecision::Precise][accessType]);
+	}*/
 	
 	//approximate access
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
 		for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
-			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[AccessPrecision::Approximate][accessType]);
+			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[consumptionTypeIndex][accessType]);
 		}
 
 		#if ENABLE_PASSIVE_INJECTION
@@ -174,7 +182,7 @@ void PeriodLog::WriteEnergyLogToFile(std::ofstream &outputLog, std::array<std::a
 
 	WriteEnergyConsumptionToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
 
-	WriteEnergyConsumptionSavingsToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
+	//WriteEnergyConsumptionSavingsToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
 
 	AddEnergyConsumption(bufferEnergy, periodEnergy);
 
@@ -205,8 +213,8 @@ void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<
 	outputLog << std::endl;
 }
 
-void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN /*= true*/, const std::string &basePadding /*= ""*/) {
-	const std::string padding = basePadding + '\t';
+//void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN /*= true*/, const std::string &basePadding /*= ""*/) {
+/*	const std::string padding = basePadding + '\t';
 	
 	outputLog << basePadding << "ENERGY CONSUMPTION SAVINGS" << std::endl;
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
@@ -220,7 +228,7 @@ void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array
 		
 		outputLog << std::endl;
 	}
-}
+}*/
 
 void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& destination, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& source) {
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {

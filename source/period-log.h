@@ -27,7 +27,7 @@ class PeriodLog {
 			std::array<size_t, ErrorCategory::Size> m_berIndex;
 		#endif
 
-		void IncreaseAccess(const bool precision, const size_t type, const size_t size /*in bytes*/);
+		void IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/);
 
 		void WriteBerIndexesToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
 
@@ -47,7 +47,7 @@ class PeriodLog {
 };
 
 void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN = true, const std::string &basePadding = "");
-void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN = true, const std::string &basePadding = "");
+//void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN = true, const std::string &basePadding = "");
 void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& destination, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& source);
 void WriteAccessedBytesToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string& accessedType, const std::string& accessScope, const std::string& padding = "");
 
