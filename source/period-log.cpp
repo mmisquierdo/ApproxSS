@@ -120,7 +120,7 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 	}
 	outputLog << std::endl;
 
-	this->WriteBerIndexesToFile(outputLog, padding);
+	/*this->WriteBerIndexesToFile(outputLog, padding);
 
 	#if LOG_FAULTS
 		outputLog << std::endl;
@@ -129,7 +129,7 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 			this->WriteAndSumIndividualInjectionArray(outputLog, ErrorCategoryNames[i], bitDepth, totalTargetInjections[i], this->GetErrorCountsByBit(i), padding);
 		}
 		outputLog << padding << "INJECTION COUNT END" << std::endl;
-	#endif
+	#endif*/
 
 	outputLog << basePadding << "PERIOD END" << std::endl;
 	outputLog << std::endl;

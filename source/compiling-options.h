@@ -38,7 +38,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef MULTIPLE_BER_ELEMENT
-	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && true)
+	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && false)
 #endif
 
 #ifndef ENABLE_PASSIVE_INJECTION
@@ -54,7 +54,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef LOG_FAULTS
-	#define LOG_FAULTS true
+	#define LOG_FAULTS false
 #endif
 
 #ifndef LS_BIT_DROPPING //NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER WRITE ERRORS
@@ -62,7 +62,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef PIN_LOCKED
-	#define PIN_LOCKED true
+	#define PIN_LOCKED false
 #endif
 
 //USER-DEFINED END

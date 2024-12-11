@@ -144,6 +144,7 @@ class ApproximateBuffer : public Range {
 		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		
 		int64_t GetConfigurationId() const;
+		int64_t GetBufferId() const;
 
 		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
 		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;

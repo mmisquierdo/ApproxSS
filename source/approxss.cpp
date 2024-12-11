@@ -21,7 +21,9 @@
 //int g_level = 0;
 uint64_t g_injectionCalls 	= 0; //NOTE: possible race condition, but I don't care
 
-uint64_t g_currentPeriod 	= 0; //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
+uint64_t g_currentPeriod 	= 31; //starting POC of a random_access encoding //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
+
+std::vector<int64_t> levels;
 
 #if PIN_LOCKED
 	PIN_LOCK g_pinLock;
@@ -110,6 +112,16 @@ class ThreadControl {
 		;
 	}
 
+	bool HowManyActiveBuffers() const {
+		return 
+		#if MULTIPLE_ACTIVE_BUFFERS
+			(this->m_activeBuffers.size())
+		#else
+			(this->m_activeBuffer)
+		#endif
+		;
+	}
+
 	bool IsPresent(const Range& range) const {
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator it =  this->m_activeBuffers.find(range);
@@ -169,7 +181,7 @@ namespace PintoolControl {
 	}
 
 	//effectively enables the error injection  //not a boolean to allow layers (so functions that call each other don't disable the injection)
-	VOID start_level(IF_PIN_LOCKED(const THREADID threadId)) {
+	VOID start_level(IF_PIN_LOCKED_COMMA(const THREADID threadId) const int64_t level) {
 		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
@@ -177,6 +189,10 @@ namespace PintoolControl {
 		#endif
 
 		tdata.m_level++;
+
+		levels.push_back(level);
+
+		std::cout << levels.size() << std::endl;
 	}
 
 	//effectively disables the error injection
@@ -188,12 +204,15 @@ namespace PintoolControl {
 		#endif
 
 		tdata.m_level--;
+
+		levels.pop_back();
 	}
 
-	VOID next_period() {
+	VOID next_period(const uint64_t period) {
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
-		++g_currentPeriod;
+		//++g_currentPeriod;
+		g_currentPeriod = period;
 
 		ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 
@@ -257,7 +276,7 @@ namespace PintoolControl {
 		} 
 		#if !PIN_LOCKED
 			else {
-				std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << ") already active. Ignoring addition request." << std::endl;
+				std::cout << "ApproxSS Warning: approximate buffer (id: " << bufferId << " (" << (size_t) start_address << "-" << (size_t) end_address << ")) already active (as id: " << lbActiveMain->second->GetBufferId() << " (" << (size_t) lbActiveMain->second->m_initialAddress << "-" << (size_t) lbActiveMain->second->m_finalAddress << ")). Ignoring addition request." << std::endl;
 			}
 		#endif
 
@@ -385,17 +404,17 @@ namespace AccessHandler {
 		#if PIN_LOCKED
 			return *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
-			return mainThread;
+			return PintoolControl::g_mainThreadControl;
 		#endif
 	}
 
-	static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
+	/*static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
 		#if PIN_LOCKED
 			return threadControl.IsPresent(range);
 		#else
 			return true;
 		#endif
-	}
+	}*/
 
 	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		#if PIN_LOCKED
@@ -838,6 +857,10 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
+		if (PintoolControl::g_mainThreadControl.HasActiveBuffers()) {
+			std::cout << "ApproxSS Warning: still " << << ""
+		}
+
 		#if PIN_LOCKED
 			for (const auto& [_, tdata] : PintoolControl::threadControlMap) {
 				tdata->~ThreadControl();
