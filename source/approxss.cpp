@@ -60,6 +60,21 @@ typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximat
 	typedef std::map<Range, ChosenTermApproximateBuffer*, RangeCompare> ActiveBuffers;
 #endif
 
+int64_t array_hash(const std::vector<int64_t>& sequence) {
+    int64_t result = 0;
+
+    for (const auto& value : sequence) {
+
+        result ^= value + 0x9E3779B97F4A7C15 + (result << 6) + (result >> 2);
+    }
+
+    return result;
+}
+
+typedef std::map<int64_t, std::vector<int64_t>> HashedSequence;
+HashedSequence g_hashedSequence;
+int64_t g_sequenceHash;
+
 class ThreadControl {
 	public: 
 		const THREADID m_threadId;
@@ -84,7 +99,8 @@ class ThreadControl {
 	}
 
 	bool isThreadInjectionEnabled() const {
-		return this->m_level && m_injectionEnabled;
+		//return this->m_level && m_injectionEnabled;
+		return true;
 	}
 
 	~ThreadControl() {
@@ -112,7 +128,7 @@ class ThreadControl {
 		;
 	}
 
-	bool HowManyActiveBuffers() const {
+	size_t HowManyActiveBuffers() const {
 		return 
 		#if MULTIPLE_ACTIVE_BUFFERS
 			(this->m_activeBuffers.size())
@@ -135,6 +151,15 @@ class ThreadControl {
 		#endif
 
 		return false;
+	}
+
+	void PrintStillActiveBuffers() {
+		std::cout << "Still active buffer(s): ";
+		std::cout << "\tIds: ";
+		for (auto const& [range, buffer] : this->m_activeBuffers) {
+			std::cout << buffer->GetBufferId() << ';';
+		}
+		std::cout << std::endl;
 	}
 };
 
@@ -192,7 +217,15 @@ namespace PintoolControl {
 
 		levels.push_back(level);
 
-		std::cout << levels.size() << std::endl;
+		/*std::cout << "Levels: " << levels.size() << " - ";
+		for (const auto& l : levels) {
+			std::cout << " " << l << ";";
+		} 
+		std::cout << array_hash(levels) << std::endl;*/
+
+		g_sequenceHash = array_hash(levels);
+
+		g_hashedSequence.emplace(g_sequenceHash, levels);
 	}
 
 	//effectively disables the error injection
@@ -206,6 +239,8 @@ namespace PintoolControl {
 		tdata.m_level--;
 
 		levels.pop_back();
+
+		g_sequenceHash = array_hash(levels);
 	}
 
 	VOID next_period(const uint64_t period) {
@@ -350,7 +385,20 @@ namespace PintoolControl {
 		#endif
 		#if !PIN_LOCKED
 			  else {
-				std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
+				bool isPresent = false;
+				for (auto const& [generalKey, buffer] : PintoolControl::generalBuffers) {
+					if (buffer->IsEqual(range)) {
+						isPresent = true;
+						break;
+					}
+				}
+
+				if (isPresent) {
+					std::cout << "ApproxSS Warning: approximate buffer not found for removal but present in past records. Ignorning request." << std::endl;
+				} else {
+					std::cout << "ApproxSS Warning: approximate buffer not found for removal nor in past records. Ignorning request." << std::endl;
+				}
+
 			}
 		#endif
 
@@ -857,8 +905,16 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
-		if (PintoolControl::g_mainThreadControl.HasActiveBuffers()) {
-			std::cout << "ApproxSS Warning: still " << << ""
+		std::cout << "\nFinal Levels: " << levels.size() << " - ";
+		for (const auto& l : levels) {
+			std::cout << " " << l << ";";
+		} 
+		std::cout << std::endl;
+
+		std::cout << "ApproxSS Fini: " << PintoolControl::g_mainThreadControl.HowManyActiveBuffers() << " buffer(s) still active at Fini." << std::endl;
+
+		if (PintoolControl::g_mainThreadControl.HasActiveBuffer()) {
+			PintoolControl::g_mainThreadControl.PrintStillActiveBuffers();
 		}
 
 		#if PIN_LOCKED
