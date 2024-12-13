@@ -11,11 +11,15 @@
 #include "injector-configuration.h"
 #include "configuration-input.h"
 
+extern int64_t g_sequenceHash;
+extern HashedSequence g_hashedSequence;
+
 class PeriodLog {
 	public:
 		uint64_t m_period;
 
-		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> m_accessedBytesCount;
+		//std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> m_accessedBytesCount;
+		std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> m_accessedBytesCount
 
 		#if LOG_FAULTS
 			std::array<std::unique_ptr<uint64_t[]>, ErrorCategory::Size> m_errorsCountsByBit;
@@ -36,7 +40,7 @@ class PeriodLog {
 
 		uint64_t* GetErrorCountsByBit(const size_t errorCat) const;
 
-		bool IsVirgin() const;
+		//bool IsVirgin() const;
 
 		void ResetCounts(const uint64_t period, const InjectionConfigurationLocal& injectorCfg);
 

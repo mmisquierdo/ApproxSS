@@ -71,7 +71,6 @@ int64_t array_hash(const std::vector<int64_t>& sequence) {
     return result;
 }
 
-typedef std::map<int64_t, std::vector<int64_t>> HashedSequence;
 HashedSequence g_hashedSequence;
 int64_t g_sequenceHash;
 

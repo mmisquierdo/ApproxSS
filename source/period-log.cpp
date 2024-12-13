@@ -3,7 +3,11 @@
 PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 	this->m_period = other.m_period;
 
-	std::copy_n(&(other.m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, &(this->m_accessedBytesCount[0][0]));
+	//std::copy_n(&(other.m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, &(this->m_accessedBytesCount[0][0]));
+
+	for (const size_t i = 0; i < AccessTypes::Size; ++i) {
+		this->m_accessedBytesCount[i] = other.m_accessedBytesCount[i];
+	}
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -32,7 +36,10 @@ PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &i
 
 void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	this->m_period = period;
-	std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+	//std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+	for (const size_t i = 0; i < AccessTypes::Size; ++i) {
+		this->m_accessedBytesCount[i].clear();
+	}
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -48,7 +55,7 @@ void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationL
 }
 
 void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/) {
-	#if PIN_LOCKED
+	/*#if PIN_LOCKED
 		if (isBufferInThread) {
 	#endif
 
@@ -56,10 +63,12 @@ void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_
 
 	#if PIN_LOCKED
 		}
-	#endif
+	#endif*/
+
+	this->m_accessedBytesCount[type][g_sequenceHash] += size;
 }
 
-bool PeriodLog::IsVirgin() const {
+/*bool PeriodLog::IsVirgin() const {
 	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 		for (size_t j = 0; j < AccessTypes::Size; ++j) {
 			if (this->m_accessedBytesCount[i][j] != 0) {
@@ -69,7 +78,7 @@ bool PeriodLog::IsVirgin() const {
 	}
 	
 	return true;
-}
+}*/
 
 void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::string &basePadding /*= ""*/) const {
 	for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -112,12 +121,17 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 	outputLog << basePadding << "PERIOD START" << std::endl;
 	outputLog << padding << "For the period: " << this->m_period << std::endl;
 
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+	/*for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 		for (size_t j = 0; j < AccessTypes::Size; ++j) {
 			WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i][j], AccessTypesNames[j], "Period " + AccessPrecisionNames[i], padding);
 			bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
 		}
+	}*/
+	for (size_t i = 0; i < AccessTypes::Size; ++i) {
+			WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i], AccessTypesNames[i], "Period ", padding);
+			bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
 	}
+
 	outputLog << std::endl;
 
 	/*this->WriteBerIndexesToFile(outputLog, padding);
@@ -158,7 +172,7 @@ void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, E
 	}*/
 	
 	//approximate access
-	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
+	/*for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
 		for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
 			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[consumptionTypeIndex][accessType]);
 		}
@@ -166,7 +180,7 @@ void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, E
 		#if ENABLE_PASSIVE_INJECTION
 			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, ErrorCategory::Passive, bufferSizeInBytes);
 		#endif
-	}
+	}*/
 }
 
 void PeriodLog::WriteEnergyLogToFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &bufferEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes, const std::string &basePadding /*= ""*/) const {
@@ -238,7 +252,13 @@ void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, Co
 	}
 }
 
-void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
-	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes/Bits: " << accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
-	outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
+
+
+void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const std::map<int64_t, uint64_t>& accessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
+	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes: " << std::endl; //<< accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
+	//outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
+
+	for (const auto& [hash, accessedCount] : accessedBytes) {
+		
+	}
 }
