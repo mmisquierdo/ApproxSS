@@ -840,8 +840,8 @@ namespace PintoolOutput {
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
 
-		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> totalTargetAccessesBytes;
-		std::fill_n(&(totalTargetAccessesBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+		std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> totalTargetAccessesBytes;
+		//std::fill_n(&(totalTargetAccessesBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
 		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
 			approxBuffer->WriteAccessLogToFile(PintoolOutput::accessLog, totalTargetAccessesBytes, totalTargetInjections);
@@ -849,13 +849,18 @@ namespace PintoolOutput {
 
 		uint64_t totalAccesses = 0;
 		PintoolOutput::accessLog << std::endl;
-		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+		//for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 			for (size_t j = 0; j < AccessTypes::Size; ++j) {
-				PintoolOutput::accessLog << "Total Software Implementation " << AccessPrecisionNames[i] << " " << AccessTypesNames[j] << " Bytes/Bits: " << totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
-				totalAccesses += totalTargetAccessesBytes[i][j];
+				PintoolOutput::accessLog << "Total Software Implementation " /*<< AccessPrecisionNames[i]*/ << " " << AccessTypesNames[j] << " Bytes: ";//<< totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
+				//totalAccesses += totalTargetAccessesBytes[i][j];
+
+				for (const auto& [hash, accessedCount] : totalTargetAccessesBytes[j]) {
+					PintoolOutput::accessLog << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
+					totalAccesses += accessedCount;
+				}
 			}
-		}
-		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
+		//}
+		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes: " << totalAccesses << std::endl;
 
 		#if LOG_FAULTS
 			uint64_t totalInjections = 0;

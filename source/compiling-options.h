@@ -121,9 +121,9 @@ const std::array<const std::string, AccessPrecision::Size> AccessPrecisionNames 
 
 const std::array<const std::string, AccessTypes::Size> AccessTypesNames = {"Read", "Write"};
 
+#include <map>
+#include <vector>
+
 typedef std::map<int64_t, std::vector<int64_t>> HashedSequence;
-
-
-
 
 #endif /* COMPILING_OPTIONS_H */

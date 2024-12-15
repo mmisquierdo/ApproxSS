@@ -147,7 +147,7 @@ class ApproximateBuffer : public Range {
 		int64_t GetBufferId() const;
 
 		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
-		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
+		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::map<int64_t, uint64_t>, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding = "") const;
 };
 

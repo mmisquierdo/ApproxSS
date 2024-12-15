@@ -345,15 +345,16 @@ void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std
 }
  
 
-void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
+void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::map<int64_t, uint64_t>, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
 	this->WriteLogHeaderToFile(outputLog, basePadding);
 
 	uint64_t activePeriodsCount	= 0;
-	std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
-	std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+	//std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
+	std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> bufferAccessedBytes;
+	//std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;
@@ -362,12 +363,12 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 
 	outputLog << padding << "BUFFER TOTALS" << std::endl;
 
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+	//for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 		for (size_t j = 0; j < AccessTypes::Size; ++j) {
-			WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i][j], AccessTypesNames[j], "Buffer " + AccessPrecisionNames[i], padding);
-			totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
+			WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[j], totalTargetAccessesBytes[j], AccessTypesNames[j], "Buffer"/*+ AccessPrecisionNames[i]*/, padding);
+			//totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
 		}
-	}
+	//}
 
 	outputLog << padding << "Buffer Active Periods: " << activePeriodsCount << std::endl;
 

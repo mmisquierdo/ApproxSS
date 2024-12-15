@@ -5,7 +5,7 @@ PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 
 	//std::copy_n(&(other.m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, &(this->m_accessedBytesCount[0][0]));
 
-	for (const size_t i = 0; i < AccessTypes::Size; ++i) {
+	for (size_t i = 0; i < AccessTypes::Size; ++i) {
 		this->m_accessedBytesCount[i] = other.m_accessedBytesCount[i];
 	}
 
@@ -37,7 +37,7 @@ PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &i
 void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	this->m_period = period;
 	//std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
-	for (const size_t i = 0; i < AccessTypes::Size; ++i) {
+	for (size_t i = 0; i < AccessTypes::Size; ++i) {
 		this->m_accessedBytesCount[i].clear();
 	}
 
@@ -115,7 +115,7 @@ void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::strin
 	}
 #endif
 
-void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
+void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
 	const std::string padding = basePadding + '\t';
 
 	outputLog << basePadding << "PERIOD START" << std::endl;
@@ -128,8 +128,8 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 		}
 	}*/
 	for (size_t i = 0; i < AccessTypes::Size; ++i) {
-			WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i], AccessTypesNames[i], "Period ", padding);
-			bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
+			WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i], bufferAccessedBytes[i], AccessTypesNames[i], "Period ", padding);
+			//bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
 	}
 
 	outputLog << std::endl;
@@ -252,13 +252,39 @@ void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, Co
 	}
 }
 
+std::string StringifyHashedSequence(const int64_t hash) {
+	const HashedSequence::const_iterator it = g_hashedSequence.find(hash);
+
+	std::string str;
+
+	if (it == g_hashedSequence.end()) {
+		std::cerr << "ApproxSS Warning: Unhashed sequence somehow." << std::endl;
+		return str;
+	}
+
+	const std::vector<int64_t>& sequence = it->second;
+
+	if (sequence.empty()) {
+		std::cerr << "ApproxSS Warning: empty hashed sequence somehow." << std::endl;
+		return str;
+	}
+
+	str += std::to_string(sequence[0]);
+
+	for (size_t i = 1; i < sequence.size(); ++ i) {
+		str += '.' + std::to_string(sequence[0]);
+	}
+
+	return str;
+}
 
 
-void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const std::map<int64_t, uint64_t>& accessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
+void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const std::map<int64_t, uint64_t>& accessedBytes, std::map<int64_t, uint64_t>& bufferAccessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
 	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes: " << std::endl; //<< accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
 	//outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
 
 	for (const auto& [hash, accessedCount] : accessedBytes) {
-		
+		outputLog << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
+		bufferAccessedBytes[hash] += accessedCount;
 	}
 }
