@@ -132,7 +132,7 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 			//bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
 	}
 
-	outputLog << std::endl;
+	//outputLog << std::endl;
 
 	/*this->WriteBerIndexesToFile(outputLog, padding);
 
@@ -258,21 +258,21 @@ std::string StringifyHashedSequence(const int64_t hash) {
 	std::string str;
 
 	if (it == g_hashedSequence.end()) {
-		std::cerr << "ApproxSS Warning: Unhashed sequence somehow." << std::endl;
+		std::cerr << "ApproxSS Warning: Unhashed sequence somehow: " << hash << "." << std::endl;
 		return str;
 	}
 
 	const std::vector<int64_t>& sequence = it->second;
 
 	if (sequence.empty()) {
-		std::cerr << "ApproxSS Warning: empty hashed sequence somehow." << std::endl;
+		std::cerr << "ApproxSS Warning: empty hashed sequence somehow " << hash << "." << std::endl;
 		return str;
 	}
 
 	str += std::to_string(sequence[0]);
 
 	for (size_t i = 1; i < sequence.size(); ++ i) {
-		str += '.' + std::to_string(sequence[0]);
+		str += '.' + std::to_string(sequence[i]);
 	}
 
 	return str;
@@ -284,7 +284,7 @@ void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, c
 	//outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
 
 	for (const auto& [hash, accessedCount] : accessedBytes) {
-		outputLog << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
+		outputLog << padding << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
 		bufferAccessedBytes[hash] += accessedCount;
 	}
 }

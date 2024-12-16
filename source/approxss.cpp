@@ -54,7 +54,7 @@ typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximat
 	struct RangeCompare {
 		//overlapping ranges are considered equivalent
 		bool operator()(const Range& lhv, const Range& rhv) const {  
-			return lhv.m_finalAddress <= rhv.m_initialAddress;
+			return lhv.m_finalAddress < rhv.m_initialAddress;
 		} 
 	};
 	typedef std::map<Range, ChosenTermApproximateBuffer*, RangeCompare> ActiveBuffers;
@@ -72,7 +72,7 @@ int64_t array_hash(const std::vector<int64_t>& sequence) {
 }
 
 HashedSequence g_hashedSequence;
-int64_t g_sequenceHash;
+int64_t g_sequenceHash = 0;
 
 class ThreadControl {
 	public: 
@@ -216,11 +216,11 @@ namespace PintoolControl {
 
 		levels.push_back(level);
 
-		/*std::cout << "Levels: " << levels.size() << " - ";
+		std::cout << "Levels: " << levels.size() << " - ";
 		for (const auto& l : levels) {
 			std::cout << " " << l << ";";
 		} 
-		std::cout << array_hash(levels) << std::endl;*/
+		std::cout << array_hash(levels) << std::endl;
 
 		g_sequenceHash = array_hash(levels);
 
@@ -264,7 +264,7 @@ namespace PintoolControl {
 	}
 
 	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
-		const Range range = Range(start_address, end_address);
+		const Range range = Range(start_address, end_address-1);
 		
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
@@ -341,7 +341,7 @@ namespace PintoolControl {
 	}
 
 	VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
-		const Range range = Range(start_address, end_address);
+		const Range range = Range(start_address, end_address-1);
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;	
 
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
@@ -809,8 +809,10 @@ namespace PintoolOutput {
 			PintoolControl::threadControlMap.clear();
 		#endif
 
+		//std::cout << "Clearing " << PintoolControl::generalBuffers.size() << " General Buffers..." << std::endl;
 		PintoolControl::generalBuffers.clear();
 
+		//std::cout << "Clearing Injector Configuraitons..." << std::endl;
 		g_injectorConfigurations.clear();
 	}
 
@@ -851,7 +853,7 @@ namespace PintoolOutput {
 		PintoolOutput::accessLog << std::endl;
 		//for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 			for (size_t j = 0; j < AccessTypes::Size; ++j) {
-				PintoolOutput::accessLog << "Total Software Implementation " /*<< AccessPrecisionNames[i]*/ << " " << AccessTypesNames[j] << " Bytes: ";//<< totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
+				PintoolOutput::accessLog << "Total Software Implementation " /*<< AccessPrecisionNames[i] << " "*/ << AccessTypesNames[j] << " Bytes: " << std::endl;//<< totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
 				//totalAccesses += totalTargetAccessesBytes[i][j];
 
 				for (const auto& [hash, accessedCount] : totalTargetAccessesBytes[j]) {
@@ -929,12 +931,16 @@ namespace PintoolOutput {
 			PintoolControl::g_mainThreadControl.~ThreadControl();
 		#endif
 
+		//std::cout << "Writing Access Logs..." << std::endl;
 		PintoolOutput::WriteAccessLog();
 
+		//std::cout << "Writing Energy Logs?" << std::endl;
 		if (!g_consumptionProfiles.empty()) {
+			//std::cout << "Yes, Writing Energy Logs..." << std::endl;
 			PintoolOutput::WriteEnergyLog();
 		}
 
+		//std::cout << "Deleting Data Estructures..." << std::endl;
 		PintoolOutput::DeleteDataEstructures();
 	}
 }

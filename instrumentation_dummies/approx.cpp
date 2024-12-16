@@ -1,6 +1,6 @@
 #include "approx.h"
 
-int __attribute__((optimize("O0"))) ApproxSS::start_level(int level/* = 0*/){ // 1 parametro
+int __attribute__((optimize("O0"))) ApproxSS::start_level(int64_t level/* = 0*/){ // 1 parametro
 	return 0;
 }
 
@@ -18,7 +18,7 @@ int __attribute__((optimize("O0"))) ApproxSS::remove_approx(void * const start_a
 	return 0;
 }
 
-int __attribute__((optimize("O0"))) ApproxSS::next_period(int a/*= 0*/, int b/*= 0*/)	// 2 parameters
+int __attribute__((optimize("O0"))) ApproxSS::next_period(const uint64_t period/* = 0*/, int b/*= 0*/)	// 2 parameters
 {
 	return 0;
 }

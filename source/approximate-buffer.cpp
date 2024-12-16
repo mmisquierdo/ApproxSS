@@ -99,16 +99,21 @@ int64_t ApproximateBuffer::GetBufferId() const {
 
 //MUST LOCK
 void ApproximateBuffer::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
+	//std::cout << "Cleaning " << this->m_bufferLogs.size() << " Logs..." << std::endl;
 	for (BufferLogs::const_iterator it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {
+		//std::cout << "Erasing Log..." << std::endl;
 		it = this->m_bufferLogs.erase(it);
 	}
+	//std::cout << "Finished Cleaning Logs..." << std::endl;
 }
 
 //WAS LOCKED
 ApproximateBuffer::~ApproximateBuffer() {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
+	//std::cout << "Clearing Buffer Logs..." << std::endl;
 	this->CleanLogs();
+	//std::cout << "Finished Clearing Buffer Logs..." << std::endl;
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
@@ -413,8 +418,12 @@ ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange,
 
 //WAS LOCKED (INDIRECTLY)
 ShortTermApproximateBuffer::~ShortTermApproximateBuffer() {
+	//std::cout << "Destructing ShortTermApproximateBuffer..." << std::endl;
+	//std::cout << "Retiring Buffer..." << std::endl;
 	ShortTermApproximateBuffer::RetireBuffer(false);
-	ApproximateBuffer::~ApproximateBuffer();
+	//std::cout << "Finished Retiring Buffer..." << std::endl;
+	//ApproximateBuffer::~ApproximateBuffer();
+	//std::cout << "Finished Destructing ShortTermApproximateBuffer..." << std::endl;
 }
 
 //WAS LOCKED
@@ -791,7 +800,7 @@ LongTermApproximateBuffer::LongTermApproximateBuffer(const Range& bufferRange, c
 //WAS LOCKED (INDIRECTLY)
 LongTermApproximateBuffer::~LongTermApproximateBuffer() {
 	LongTermApproximateBuffer::RetireBuffer(false);
-	ApproximateBuffer::~ApproximateBuffer();
+	//ApproximateBuffer::~ApproximateBuffer();
 }
 
 //MUST LOCK

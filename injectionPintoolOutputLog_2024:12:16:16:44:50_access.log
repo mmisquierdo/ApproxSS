@@ -1,0 +1,85 @@
+Total Injection Calls: 0
+
+BUFFER START
+	Buffer Id: 1
+	Initial Address: 99976752726704
+	Final Address: 99976752726704
+	Configuration Id: 1
+	Data Size (Bytes): 1
+	Bit Depth: 8
+	Buffer Software Implementation Size Bytes/Bits: 1 / 8
+	Buffer Proposed Implementation Size Bytes/Bits: 1 / 8
+	Buffer Elements: 1
+
+	PERIOD START
+		For the period: 31
+		Period  Read Software Implementation Bytes: 
+			-1.20: 1
+			-1.40: 1
+			-1: 3
+		Period  Write Software Implementation Bytes: 
+			-1.30: 1
+			-1.40: 1
+			-1: 2
+	PERIOD END
+
+	BUFFER TOTALS
+	Buffer Read Software Implementation Bytes: 
+		-1.20: 1
+		-1.40: 1
+		-1: 3
+	Buffer Write Software Implementation Bytes: 
+		-1.30: 1
+		-1.40: 1
+		-1: 2
+	Buffer Active Periods: 1
+BUFFER END
+
+BUFFER START
+	Buffer Id: 2
+	Initial Address: 99976752726704
+	Final Address: 99976752726704
+	Configuration Id: 1
+	Data Size (Bytes): 1
+	Bit Depth: 8
+	Buffer Software Implementation Size Bytes/Bits: 1 / 8
+	Buffer Proposed Implementation Size Bytes/Bits: 1 / 8
+	Buffer Elements: 1
+
+	PERIOD START
+		For the period: 31
+		Period  Read Software Implementation Bytes: 
+			-1.50: 1
+			-1.70: 1
+			-1: 3
+		Period  Write Software Implementation Bytes: 
+			-1.60: 1
+			-1.70: 1
+			-1: 2
+	PERIOD END
+
+	BUFFER TOTALS
+	Buffer Read Software Implementation Bytes: 
+		-1.50: 1
+		-1.70: 1
+		-1: 3
+	Buffer Write Software Implementation Bytes: 
+		-1.60: 1
+		-1.70: 1
+		-1: 2
+	Buffer Active Periods: 1
+BUFFER END
+
+Total Software Implementation Read Bytes: 
+	-1.20: 1
+	-1.40: 1
+	-1.50: 1
+	-1.70: 1
+	-1: 6
+Total Software Implementation Write Bytes: 
+	-1.30: 1
+	-1.60: 1
+	-1.40: 1
+	-1.70: 1
+	-1: 4
+Total Software Implementation Accessed Bytes: 18
