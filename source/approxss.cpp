@@ -216,11 +216,11 @@ namespace PintoolControl {
 
 		levels.push_back(level);
 
-		std::cout << "Levels: " << levels.size() << " - ";
+		/*std::cout << "Levels: " << levels.size() << " - ";
 		for (const auto& l : levels) {
 			std::cout << " " << l << ";";
 		} 
-		std::cout << array_hash(levels) << std::endl;
+		std::cout << array_hash(levels) << std::endl;*/
 
 		g_sequenceHash = array_hash(levels);
 
