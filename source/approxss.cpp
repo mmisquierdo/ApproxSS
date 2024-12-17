@@ -21,7 +21,9 @@
 //int g_level = 0;
 uint64_t g_injectionCalls 	= 0; //NOTE: possible race condition, but I don't care
 
-uint64_t g_currentPeriod 	= 31; //starting POC of a random_access encoding //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
+uint64_t g_currentPeriod 	= 999; //starting POC of a random_access encoding //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
+
+uint64_t g_fullAccessCount = 0;
 
 std::vector<int64_t> levels;
 
@@ -470,6 +472,8 @@ namespace AccessHandler {
 			}
 		#endif
 
+		g_fullAccessCount += accessSizeInBytes;
+
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
@@ -524,6 +528,8 @@ namespace AccessHandler {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
+
+		g_fullAccessCount += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
 		
 		uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
@@ -863,6 +869,8 @@ namespace PintoolOutput {
 			}
 		//}
 		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes: " << totalAccesses << std::endl;
+
+		PintoolOutput::accessLog << "Full Acessed Bytes (Uninstrumented Included): " << g_fullAccessCount << std::endl;
 
 		#if LOG_FAULTS
 			uint64_t totalInjections = 0;
