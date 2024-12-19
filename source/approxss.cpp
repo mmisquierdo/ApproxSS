@@ -208,6 +208,7 @@ namespace PintoolControl {
 
 	//effectively enables the error injection  //not a boolean to allow layers (so functions that call each other don't disable the injection)
 	VOID start_level(IF_PIN_LOCKED_COMMA(const THREADID threadId) const int64_t level) {
+		//std::cout << "<start_level>" << std::endl;
 		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
@@ -227,10 +228,13 @@ namespace PintoolControl {
 		g_sequenceHash = array_hash(levels);
 
 		g_hashedSequence.emplace(g_sequenceHash, levels);
+
+		//std::cout << "</start_level>" << std::endl;
 	}
 
 	//effectively disables the error injection
 	VOID end_level(IF_PIN_LOCKED(const THREADID threadId)) {
+		//std::cout << "<end_level>" << std::endl;
 		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
@@ -242,6 +246,7 @@ namespace PintoolControl {
 		levels.pop_back();
 
 		g_sequenceHash = array_hash(levels);
+		//std::cout << "</end_level>" << std::endl;
 	}
 
 	VOID next_period(const uint64_t period) {
@@ -266,6 +271,8 @@ namespace PintoolControl {
 	}
 
 	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
+		//std::cout << "<add_approx>" << std::endl;
+
 		const Range range = Range(start_address, end_address-1);
 		
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
@@ -340,9 +347,13 @@ namespace PintoolControl {
 		}
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+
+		//std::cout << "</add_approx>" << std::endl;
 	}
 
 	VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
+		//std::cout << "<remove_approx>" << std::endl;
+
 		const Range range = Range(start_address, end_address-1);
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;	
 
@@ -385,7 +396,7 @@ namespace PintoolControl {
 			}
 		#endif
 		#if !PIN_LOCKED
-			  else {
+			  else {/*
 				bool isPresent = false;
 				for (auto const& [generalKey, buffer] : PintoolControl::generalBuffers) {
 					if (buffer->IsEqual(range)) {
@@ -398,12 +409,13 @@ namespace PintoolControl {
 					std::cout << "ApproxSS Warning: approximate buffer not found for removal but present in past records. Ignorning request." << std::endl;
 				} else {
 					std::cout << "ApproxSS Warning: approximate buffer not found for removal nor in past records. Ignorning request." << std::endl;
-				}
-
+				}*/
 			}
 		#endif
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+
+		//std::cout << "<remove_approx>" << std::endl;
 	}
 
 	#if PIN_LOCKED
@@ -466,6 +478,7 @@ namespace AccessHandler {
 	}*/
 
 	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		//std::cout << "<CheckAndForward>" << std::endl;
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -498,6 +511,7 @@ namespace AccessHandler {
 		#endif
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+		//std::cout << "</CheckAndForward>" << std::endl;
 	}
 
 	// memory read
@@ -528,6 +542,8 @@ namespace AccessHandler {
 		if (memOpInfo->NumOfElements() < 1) {
 			return;
 		}
+
+		//std::cout << "<CheckAndForwardScattered>" << std::endl;
 
 		g_fullAccessCount += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
 		
@@ -560,6 +576,8 @@ namespace AccessHandler {
 		#endif
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+
+		//std::cout << "</CheckAndForwardScattered>" << std::endl;
 	}
 
 	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
