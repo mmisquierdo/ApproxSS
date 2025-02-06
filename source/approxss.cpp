@@ -461,13 +461,13 @@ namespace AccessHandler {
 			return mainThread.isThreadInjectionEnabled();
 		#endif
 	}*/
-	static const ThreadControl& GetInterestThreadControl(IF_PIN_LOCKED(const THREADID threadId)) {
+	/*static const ThreadControl& GetInterestThreadControl(IF_PIN_LOCKED(const THREADID threadId)) {
 		#if PIN_LOCKED
 			return *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
 			return PintoolControl::g_mainThreadControl;
 		#endif
-	}
+	}*/
 
 	/*static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
 		#if PIN_LOCKED
@@ -477,7 +477,7 @@ namespace AccessHandler {
 		#endif
 	}*/
 
-	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+	VOID CheckAndForward(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress,*/ const UINT32 accessSizeInBytes) {
 		//std::cout << "<CheckAndForward>" << std::endl;
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
@@ -489,7 +489,7 @@ namespace AccessHandler {
 
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
-		const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
+		/*const ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
 		#if MULTIPLE_ACTIVE_BUFFERS || PIN_LOCKED
 			const Range range = Range(accessedAddress, accessedAddress);
@@ -508,31 +508,31 @@ namespace AccessHandler {
 				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
 				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
-		#endif
+		#endif*/
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 		//std::cout << "</CheckAndForward>" << std::endl;
 	}
 
 	// memory read
-	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryReadSIMD(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress,*/ const UINT32 accessSizeInBytes) {		
+		CheckAndForward(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress,*/ accessSizeInBytes);
 	}
 
-	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryRead(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress,*/ const UINT32 accessSizeInBytes) {		
+		CheckAndForward(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress,*/ accessSizeInBytes);
 	}
 
 	// memory write
-	VOID HandleMemoryWriteSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWriteSIMD(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress,*/ const UINT32 accessSizeInBytes) {
+		CheckAndForward(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress,*/ accessSizeInBytes);
 	}
 
-	VOID HandleMemoryWrite(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
+	VOID HandleMemoryWrite(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress,*/ const UINT32 accessSizeInBytes) {
+		CheckAndForward(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress,*/ accessSizeInBytes);
 	}
 
-	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool IF_COMMA_PIN_LOCKED(const bool)), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	VOID CheckAndForwardScattered(/*IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool IF_COMMA_PIN_LOCKED(const bool)),*/ IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -547,7 +547,7 @@ namespace AccessHandler {
 
 		g_fullAccessCount += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
 		
-		uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
+		/*uint8_t * accessedAddress = (uint8_t*) memOpInfo->ElementAddress(0); 
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
 		#if MULTIPLE_ACTIVE_BUFFERS || PIN_LOCKED
@@ -573,19 +573,19 @@ namespace AccessHandler {
 
 				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			}
-		#endif
+		#endif*/
 
 		IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
 
 		//std::cout << "</CheckAndForwardScattered>" << std::endl;
 	}
 
-	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo);
+	VOID HandleMemoryReadScattered(/*IF_PIN_LOCKED_COMMA(const THREADID threadId)*/ IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered,*/ memOpInfo);
 	}
 
-	VOID HandleMemoryWriteScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
-		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo);
+	VOID HandleMemoryWriteScattered(/*IF_PIN_LOCKED_COMMA(const THREADID threadId)*/ IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		CheckAndForwardScattered(/*IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered,*/ memOpInfo);
 	}
 }
 
@@ -608,19 +608,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadSIMD,/* IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+							IARG_MEMORYOP_EA, memOp,*/ IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYREAD_SIZE,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryRead, /*IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+							IARG_MEMORYOP_EA, memOp,*/ IARG_MEMORYREAD_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryReadScattered, //IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -633,19 +633,19 @@ namespace TargetInstrumentation {
 				if (!INS_HasScatteredMemoryAccess(ins)) {
 					if (INS_MemoryOperandElementCount(ins, memOp) > 1) {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteSIMD, /*IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+							IARG_MEMORYOP_EA, memOp,*/ IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					} else {
 						INS_InsertPredicatedCall(
-							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_MEMORYOP_EA, memOp, IARG_MEMORYWRITE_SIZE,
+							ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWrite, /*IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+							IARG_MEMORYOP_EA, memOp,*/ IARG_MEMORYWRITE_SIZE,
 							IARG_END);
 					}
 				} else {
 					const UINT32 op = INS_MemoryOperandIndexToOperandIndex(ins, memOp);
 					INS_InsertPredicatedCall(
-						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
+						ins, IPOINT_BEFORE, (AFUNPTR)AccessHandler::HandleMemoryWriteScattered, //IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
 						IARG_MULTI_ELEMENT_OPERAND, op,
 						IARG_END);
 				}
@@ -1013,7 +1013,7 @@ int main(const int argc, char* argv[]) {
 	}
 
 	// Register Routine to be called to instrument rtn
-	RTN_AddInstrumentFunction(TargetInstrumentation::Routine, nullptr);
+	//RTN_AddInstrumentFunction(TargetInstrumentation::Routine, nullptr);
 
 	// Obtain  a key for TLS storage.
 	#if PIN_LOCKED
