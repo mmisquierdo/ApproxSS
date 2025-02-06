@@ -350,7 +350,7 @@ void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std
 }
  
 
-void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::map<int64_t, uint64_t>, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
+void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<uint64_t, AccessTypes::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
@@ -358,8 +358,8 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 
 	uint64_t activePeriodsCount	= 0;
 	//std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
-	std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> bufferAccessedBytes;
-	//std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+	std::array<uint64_t, AccessTypes::Size> bufferAccessedBytes;
+	std::fill_n(&(bufferAccessedBytes[0]), AccessTypes::Size, 0);
 
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;

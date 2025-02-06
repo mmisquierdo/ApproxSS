@@ -38,7 +38,7 @@ void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationL
 	this->m_period = period;
 	//std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 	for (size_t i = 0; i < AccessTypes::Size; ++i) {
-		this->m_accessedBytesCount[i].clear();
+		this->m_accessedBytesCount[i] = 0;
 	}
 
 	#if LOG_FAULTS
@@ -65,7 +65,7 @@ void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_
 		}
 	#endif*/
 
-	this->m_accessedBytesCount[type][g_sequenceHash] += size;
+	this->m_accessedBytesCount[type] += size;
 }
 
 /*bool PeriodLog::IsVirgin() const {
@@ -115,7 +115,7 @@ void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::strin
 	}
 #endif
 
-void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::map<int64_t, uint64_t>, AccessTypes::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
+void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<uint64_t, AccessTypes::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
 	const std::string padding = basePadding + '\t';
 
 	outputLog << basePadding << "PERIOD START" << std::endl;
@@ -279,12 +279,12 @@ std::string StringifyHashedSequence(const int64_t hash) {
 }
 
 
-void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const std::map<int64_t, uint64_t>& accessedBytes, std::map<int64_t, uint64_t>& bufferAccessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
-	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes: " << std::endl; //<< accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
+void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, uint64_t& bufferAccessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
+	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes: " << accessedBytes << std::endl; //<< accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
 	//outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
 
-	for (const auto& [hash, accessedCount] : accessedBytes) {
-		outputLog << padding << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
-		bufferAccessedBytes[hash] += accessedCount;
-	}
+	//for (const auto& [hash, accessedCount] : accessedBytes) {
+	//	outputLog << padding << '\t' << StringifyHashedSequence(hash) << ": " << accessedCount << std::endl;
+		bufferAccessedBytes += accessedBytes;
+	//}
 }
