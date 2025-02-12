@@ -385,17 +385,19 @@ namespace AccessHandler {
 		#if PIN_LOCKED
 			return *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
-			return mainThread;
+			return PintoolControl::g_mainThreadControl;
 		#endif
 	}
 
-	static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
-		#if PIN_LOCKED
-			return threadControl.IsPresent(range);
-		#else
-			return true;
-		#endif
-	}
+	#if PIN_LOCKED
+		static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
+			#if PIN_LOCKED
+				return threadControl.IsPresent(range);
+			#else
+				return true;
+			#endif
+		}
+	#endif
 
 	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		#if PIN_LOCKED

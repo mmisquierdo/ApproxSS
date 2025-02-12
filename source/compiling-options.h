@@ -62,7 +62,7 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef PIN_LOCKED
-	#define PIN_LOCKED true
+	#define PIN_LOCKED false
 #endif
 
 //USER-DEFINED END
