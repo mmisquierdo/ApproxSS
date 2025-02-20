@@ -356,7 +356,7 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				#if ENABLE_PASSIVE_INJECTION
 					PintoolInput::ProcessBerConfiguration(value, lineCount, *injectorCfg, ErrorCategory::Passive);
 				#else
-					std::cout << "ApproxSS warning: Passive injection configuration detected, but not supported." << std::endl;
+					std::cout << "ApproxSS warning: Passive injection configuration detected, but not supported in current compilation. Revise \"compiling-options.h\" if necessary." << std::endl;
 				#endif
 				break;
 			default:

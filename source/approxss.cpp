@@ -52,7 +52,7 @@ typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximat
 	struct RangeCompare {
 		//overlapping ranges are considered equivalent
 		bool operator()(const Range& lhv, const Range& rhv) const {  
-			return lhv.m_finalAddress <= rhv.m_initialAddress;
+			return lhv.m_finalAddress < rhv.m_initialAddress;
 		} 
 	};
 	typedef std::map<Range, ChosenTermApproximateBuffer*, RangeCompare> ActiveBuffers;
@@ -211,7 +211,7 @@ namespace PintoolControl {
 	}
 
 	VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
-		const Range range = Range(start_address, end_address);
+		const Range range = Range(start_address, end_address-1);
 		
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
@@ -288,7 +288,7 @@ namespace PintoolControl {
 	}
 
 	VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
-		const Range range = Range(start_address, end_address);
+		const Range range = Range(start_address, end_address-1);
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;	
 
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)

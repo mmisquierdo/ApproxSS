@@ -32,7 +32,7 @@ class Range {
 		Range(uint8_t * const initialAddress, uint8_t const * const finalAddress) : m_initialAddress(initialAddress), m_finalAddress(finalAddress) {}
 
 		ssize_t ssize() const {
-			return this->m_finalAddress - this->m_initialAddress;
+			return (this->m_finalAddress + 1) - this->m_initialAddress;
 		}
 
 		size_t size() const {
@@ -44,15 +44,15 @@ class Range {
 		}
 
 		bool DoesIntersectWith(uint8_t const * const address) const {
-			return (address >= this->m_initialAddress && address < this->m_finalAddress);
+			return (address >= this->m_initialAddress && address <= this->m_finalAddress);
 		}
 
 		bool DoesIntersectWith(const Range& other) const {
-			return (this->m_initialAddress < other.m_finalAddress && this->m_finalAddress > other.m_initialAddress);
+			return (this->m_initialAddress <= other.m_finalAddress && this->m_finalAddress >= other.m_initialAddress);
 		}
 
 		friend bool operator<(const Range& lhv, const Range& rhv) {  
-			return lhv.m_finalAddress <= rhv.m_initialAddress; //m_finalAddress is not included
+			return lhv.m_finalAddress < rhv.m_initialAddress; //m_finalAddress is not included
 		} 
 };
 
