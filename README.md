@@ -80,7 +80,7 @@ void add_approx(void * const start_address,
                 const size_t elementSize);
 ```
 
-The _add_approx(. . . )_ function signals ApproxSS that an approximate buffer should be added to the list of active buffers. It has as parameters, respectively, the starting (inclusive) and the final (non-inclusive) addresses of the approximate buffer to be added, an identifier for the buffer in question, the identifier of the configuration that the buffer's error injector must follow and, finally, the size in bytes of the elements stored by this buffer.
+The _add_approx(. . . )_ function signals ApproxSS that an approximate buffer should be added to the list of active buffers. It has as parameters, respectively, the starting (inclusive) and the end (non-inclusive) addresses of the approximate buffer to be added, an identifier for the buffer in question, the identifier of the configuration that the buffer's error injector must follow and, finally, the size in bytes of the elements stored by this buffer.
 
 In case the configuration identifier has not been informed in the ApproxSS inputs or the size of the elements of an approximate buffer is smaller than the length of bits of its injector configuration, an exception is generated, causing the interruption of the execution of the Pin and, consequently, of the target application. If the informed buffer crosses the range of addresses of a buffer already present in the list of active buffers, this new buffer will be ignored and will not be added, regardless of the other arguments passed. Otherwise, what if the rest of the arguments passed are identical to some buffer already present in the list of general buffers, it is added back to the list of active buffers and reactivated. If any of the other passed parameters differ, a new approximate buffer is created and added to the lists of active and general buffers.
 
@@ -92,7 +92,7 @@ void remove_approx(void * const start_address,
                    const bool giveAwayRecords = true);
 ```
 
-The function _remove_approx(. . . )_ signals to ApproxSS that an approximate buffer with the same starting and ending memory addresses should be removed from the list of active and retired buffers. It has as parameters, respectively, the starting (inclusive) and the final (non-inclusive) addresses of the approximate buffer to be removed, and a flag signalizing if the injection records should be given away to a shared memory pool between approximate buffer or deallocated. The approximate buffer data is still present in the list of general buffers, to be displayed at the end of the Pin execution and possible future readmissions to the list of active buffers.
+The function _remove_approx(. . . )_ signals to ApproxSS that an approximate buffer with the same starting and ending memory addresses should be removed from the list of active and retired buffers. It has as parameters, respectively, the starting (inclusive) and the end (non-inclusive) addresses of the approximate buffer to be removed, and a flag signalizing if the injection records should be given away to a shared memory pool between approximate buffer or deallocated. The approximate buffer data is still present in the list of general buffers, to be displayed at the end of the Pin execution and possible future readmissions to the list of active buffers.
 Retiring an approximate buffer implies reversing residual read errors and applying outstanding write errors. In addition, current period records are stored in buffer records.
 
 ### Period Increment
