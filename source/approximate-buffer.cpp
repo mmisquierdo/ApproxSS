@@ -93,6 +93,10 @@ int64_t ApproximateBuffer::GetConfigurationId() const {
 	return this->m_faultInjector.GetConfigurationId();
 }
 
+int64_t ApproximateBuffer::GetBufferId() const {
+	return this->m_id;
+}
+
 //MUST LOCK
 void ApproximateBuffer::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
 	for (BufferLogs::const_iterator it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {

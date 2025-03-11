@@ -124,6 +124,29 @@ class ThreadControl {
 
 		return false;
 	}
+
+	uint64_t HowManyActiveBuffers() const {
+		#if MULTIPLE_ACTIVE_BUFFERS
+			return this->m_activeBuffers.size();
+		#else
+			return this->m_activeBuffer ? 1 ? 0;
+		#endif
+	}
+
+	void PrintStillActiveBuffers() const {
+		#if MULTIPLE_ACTIVE_BUFFERS
+			std::cout << "Still active buffer(s): ";
+			std::cout << "\tIds: ";
+			for (auto const& [range, buffer] : this->m_activeBuffers) {
+				std::cout << '(' <<  buffer->GetBufferId() << ", " << buffer->GetConfigurationId() << "); ";
+			}
+			std::cout << std::endl;
+		#else
+			if (this->m_activeBuffer) {
+				std::cout << '(' <<  this->m_activeBuffer->GetBufferId() << ", " << this->m_activeBuffer->GetConfigurationId() << "); ";
+			}
+		#endif
+	}
 };
 
 typedef std::map<THREADID, std::unique_ptr<ThreadControl>> ThreadControlMap;
@@ -840,6 +863,18 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
+		std::cout << "\nFinal Level: " << PintoolControl::g_mainThreadControl.m_level << std::endl; //" - "; //TODO: do this per thread later!!!
+		/*for (const auto& l : levels) {
+			std::cout << " " << l << ";";
+		} */
+		std::cout << std::endl;
+
+		std::cout << "ApproxSS Fini: " << PintoolControl::g_mainThreadControl.HowManyActiveBuffers() << " buffer(s) still active at Fini." << std::endl;
+
+		if (PintoolControl::g_mainThreadControl.HasActiveBuffer()) {
+			PintoolControl::g_mainThreadControl.PrintStillActiveBuffers();
+		}
+
 		#if PIN_LOCKED
 			for (const auto& [_, tdata] : PintoolControl::threadControlMap) {
 				tdata->~ThreadControl();
