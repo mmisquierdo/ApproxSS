@@ -19,6 +19,8 @@
 
 //bool g_isGlobalInjectionEnabled = true;
 //int g_level = 0;
+//std::vector<int64_t> g_levels;
+
 uint64_t g_injectionCalls 	= 0; //NOTE: possible race condition, but I don't care
 
 uint64_t g_currentPeriod 	= 0; //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
@@ -192,7 +194,7 @@ namespace PintoolControl {
 	}
 
 	//effectively enables the error injection  //not a boolean to allow layers (so functions that call each other don't disable the injection)
-	VOID start_level(IF_PIN_LOCKED(const THREADID threadId)) {
+	VOID start_level(IF_PIN_LOCKED_COMMA(const THREADID threadId) const int64_t level) {
 		#if PIN_LOCKED
 			ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
@@ -200,6 +202,8 @@ namespace PintoolControl {
 		#endif
 
 		tdata.m_level++;
+
+		//g_levels.push_back(level);
 	}
 
 	//effectively disables the error injection
@@ -211,6 +215,8 @@ namespace PintoolControl {
 		#endif
 
 		tdata.m_level--;
+
+		//g_levels.pop_back();
 	}
 
 	VOID next_period() {
@@ -354,7 +360,7 @@ namespace PintoolControl {
 		#endif
 		#if !PIN_LOCKED
 			  else {
-				std::cout << "ApproxSS Warning: approximate buffer not found for removal. Ignorning request." << std::endl;
+				std::cout << "ApproxSS Warning: approximate buffer [" << (size_t) start_address << "; " << (size_t) end_address << "] not found for removal. Ignorning request." << std::endl;
 			}
 		#endif
 
