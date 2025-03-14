@@ -6,6 +6,7 @@
 #include "pin.H"
 #include <set>
 #include <map>
+#include <stack>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -19,7 +20,58 @@
 
 //bool g_isGlobalInjectionEnabled = true;
 //int g_level = 0;
-//std::vector<int64_t> g_levels;
+std::vector<int64_t> g_levels; //main-initialized
+int64_t g_sequenceHash = 0; //main-initialized
+std::stack<int64_t> g_layerHashes;
+
+typedef std::array<uint64_t, AccessTypes::Size> AccessCounter;
+
+typedef std::map<int64_t, std::pair<AccessCounter, std::vector<int64_t>>> LayeredAccess; //<hash, <counter, layers>>
+
+int64_t HashValue(const int64_t value, const int64_t previous = 0) {
+	return previous ^ (value + 0x9E3779B97F4A7C15 + (previous << 6) + (previous >> 2));
+}
+
+/*int64_t HashArray(const std::vector<int64_t>& sequence) {
+    int64_t result = 0;
+
+    for (const auto& value : sequence) {
+        result = HashValue(value, result)
+    }
+
+    return result;
+}*/
+
+std::string StringifyLevels(const std::vector<int64_t>& layers) {
+	std::string str;
+
+	if (layers.empty()) return str;
+
+	str += std::to_string(layers[0]);
+
+	for (size_t i = 1; i < layers.size(); ++ i) {
+		str += '.' + std::to_string(layers[i]);
+	}
+
+	return str;
+}
+
+LayeredAccess g_layeredAccesses;
+
+AccessCounter g_accessCounter;
+
+void StoreAccessLayer(LayeredAccess& layeredAccess, AccessCounter& accessCounter, const std::vector<int64_t>& levels, const int64_t sequenceHash) {
+	const LayeredAccess::iterator lbLayeredAccess = layeredAccess.lower_bound(sequenceHash);
+	if (!((lbLayeredAccess != layeredAccess.cend()) && !(layeredAccess.key_comp()(sequenceHash, lbLayeredAccess->first)))) {
+		layeredAccess.emplace_hint(lbLayeredAccess, sequenceHash, std::make_pair(accessCounter, levels));
+	} else {
+		AccessCounter& toUpdate = lbLayeredAccess->second.first;
+		for (size_t i = 0; i < accessCounter.size(); ++i) {
+			toUpdate[i] += accessCounter[i];
+		}
+	}
+	accessCounter.fill(0);
+}
 
 uint64_t g_injectionCalls 	= 0; //NOTE: possible race condition, but I don't care
 
@@ -203,7 +255,11 @@ namespace PintoolControl {
 
 		tdata.m_level++;
 
-		//g_levels.push_back(level);
+		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+
+		g_layerHashes.push(g_sequenceHash);
+		g_levels.push_back(level);
+		g_sequenceHash = HashValue(level, g_sequenceHash);
 	}
 
 	//effectively disables the error injection
@@ -216,7 +272,11 @@ namespace PintoolControl {
 
 		tdata.m_level--;
 
-		//g_levels.pop_back();
+		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+
+		g_sequenceHash = g_layerHashes.top();
+		g_layerHashes.pop();
+		g_levels.pop_back();
 	}
 
 	VOID next_period() {
@@ -462,20 +522,24 @@ namespace AccessHandler {
 	}
 
 	// memory read
-	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		g_accessCounter[AccessTypes::Read] += accessSizeInBytes;
 		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
 	}
 
-	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {		
+	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {	
+		g_accessCounter[AccessTypes::Read] += accessSizeInBytes;	
 		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
 	// memory write
 	VOID HandleMemoryWriteSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		g_accessCounter[AccessTypes::Write] += accessSizeInBytes;
 		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
 	}
 
 	VOID HandleMemoryWrite(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+		g_accessCounter[AccessTypes::Write] += accessSizeInBytes;
 		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
 	}
 
@@ -522,10 +586,12 @@ namespace AccessHandler {
 	}
 
 	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		g_accessCounter[AccessTypes::Read] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
 		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo);
 	}
 
 	VOID HandleMemoryWriteScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+		g_accessCounter[AccessTypes::Write] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
 		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo);
 	}
 }
@@ -814,6 +880,7 @@ namespace PintoolOutput {
 
 		uint64_t totalAccesses = 0;
 		PintoolOutput::accessLog << std::endl;
+		PintoolOutput::accessLog << "INSTRUMENTED BUFFERS" << std::endl;
 		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 			for (size_t j = 0; j < AccessTypes::Size; ++j) {
 				PintoolOutput::accessLog << "Total Software Implementation " << AccessPrecisionNames[i] << " " << AccessTypesNames[j] << " Bytes/Bits: " << totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
@@ -836,6 +903,22 @@ namespace PintoolOutput {
 
 			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
+
+		PintoolOutput::accessLog << "OVERALL APPLICATION" << std::endl;
+		PintoolOutput::accessLog << "Software Implementation Read/Written Bytes By Level: " << std::endl;
+		AccessCounter totalCounter;
+		totalCounter.fill(0);
+		for (const auto& [hash, layerInfo] : g_layeredAccesses) {
+			const AccessCounter& layeredAccess = layerInfo.first;
+			const std::vector<int64_t>& layerLevels = layerInfo.second;
+
+			PintoolOutput::accessLog << '\t' << StringifyLevels(layerLevels) << ": " << layeredAccess[AccessTypes::Read] << " / " << layeredAccess[AccessTypes::Write] << std::endl;
+
+			for (size_t i = 0; i < layeredAccess.size(); ++i) {
+				totalCounter[i] = layeredAccess[i];
+			}
+		}
+		PintoolOutput::accessLog << "Total Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
 		
 		PintoolOutput::accessLog.close();
 	}
@@ -869,6 +952,9 @@ namespace PintoolOutput {
 	}
 
 	VOID Fini(const INT32 code, VOID* v) {
+		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+		g_levels.pop_back();
+
 		std::cout << "\nFinal Level: " << PintoolControl::g_mainThreadControl.m_level << std::endl; //" - "; //TODO: do this per thread later!!!
 		/*for (const auto& l : levels) {
 			std::cout << " " << l << ";";
@@ -923,6 +1009,9 @@ KNOB<std::string> EnergyConsumptionOutputFile(KNOB_MODE_WRITEONCE, "pintool", "c
 /* ==================================================================== */
 
 int main(const int argc, char* argv[]) {
+	g_levels.push_back(-1);
+	g_sequenceHash = HashValue(g_levels.back());
+
 	srand((unsigned)getpid() * (unsigned)time(0));   
 
 	// Initialize symbol table code, needed for rtn instrumentation
