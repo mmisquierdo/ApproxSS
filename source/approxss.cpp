@@ -904,7 +904,7 @@ namespace PintoolOutput {
 			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
 
-		PintoolOutput::accessLog << "OVERALL APPLICATION" << std::endl;
+		PintoolOutput::accessLog << "\nOVERALL APPLICATION" << std::endl;
 		PintoolOutput::accessLog << "Software Implementation Read/Written Bytes By Level: " << std::endl;
 		AccessCounter totalCounter;
 		totalCounter.fill(0);
