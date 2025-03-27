@@ -915,7 +915,7 @@ namespace PintoolOutput {
 			PintoolOutput::accessLog << '\t' << StringifyLevels(layerLevels) << ": " << layeredAccess[AccessTypes::Read] << " / " << layeredAccess[AccessTypes::Write] << std::endl;
 
 			for (size_t i = 0; i < layeredAccess.size(); ++i) {
-				totalCounter[i] = layeredAccess[i];
+				totalCounter[i] += layeredAccess[i];
 			}
 		}
 		PintoolOutput::accessLog << "Total Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
