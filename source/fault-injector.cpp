@@ -218,7 +218,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 			this->ReviseRecords();
 		}
 
-		void DistanceBasedFaultInjector::ResetBerIndex(const uint64_t newCreationPeriod) {
+		void DistanceBasedFaultInjector::ResetBerIndex(const int64_t newCreationPeriod) {
 			InjectionConfigurationLocal::ResetBerIndex(newCreationPeriod);
 			this->ReviseRecords();
 		}

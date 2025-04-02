@@ -22,7 +22,7 @@ class FaultInjector;
 
 //extern bool g_isGlobalInjectionEnabled;
 //extern int g_level;
-extern uint64_t g_currentPeriod;
+extern int64_t g_currentPeriod;
 
 class Range {
 	public:
@@ -56,14 +56,14 @@ class Range {
 		} 
 };
 
-typedef std::map<size_t, const std::unique_ptr<PeriodLog>> BufferLogs;
+typedef std::map<int64_t, const std::unique_ptr<PeriodLog>> BufferLogs;
 
 class ApproximateBuffer : public Range {
 	protected:
 		const int64_t m_id;
 		const size_t m_dataSizeInBytes;
 		const size_t m_minimumReadBackupSize;
-		uint64_t m_creationPeriod;
+		int64_t m_creationPeriod;
 		//PIN_LOCK m_bufferLock;
 		int32_t m_isActive;
 
@@ -85,7 +85,7 @@ class ApproximateBuffer : public Range {
 				void UpdateLastAccessPeriod(uint8_t const * const accessedAddress);
 				void UpdateLastAccessPeriod(const size_t elementIndex);
 			#else
-				uint64_t m_lastPassiveInjectionPeriod; 
+				int64_t m_lastPassiveInjectionPeriod; 
 			#endif
 
 			void ApplyPassiveFault(const size_t elementIndex, uint8_t * const accessedAddress);
@@ -99,13 +99,13 @@ class ApproximateBuffer : public Range {
 			#endif
 		#endif
 
-		virtual void InitializeRecordsAndBackups(const uint64_t period);
+		virtual void InitializeRecordsAndBackups(const int64_t period);
 		virtual void GiveAwayRecordsAndBackups(const bool giveAway);
 
 		void StoreCurrentPeriodLog();
 		void CleanLogs();
 
-		uint64_t GetCurrentPassiveBerMarker() const;
+		int64_t GetCurrentPassiveBerMarker() const;
 		bool GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const;
 
 		size_t GetIndexFromAddress(uint8_t const * const address) const;
@@ -123,7 +123,7 @@ class ApproximateBuffer : public Range {
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 
 	public:
-		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		ApproximateBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 						  const InjectionConfigurationReference& injectorCfg);
 
 		ApproximateBuffer(const ApproximateBuffer&) = delete;
@@ -133,8 +133,8 @@ class ApproximateBuffer : public Range {
 
 		virtual void BackupReadData(uint8_t* const data) = 0;
 
-		void NextPeriod(const uint64_t period);
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
+		void NextPeriod(const int64_t period);
+		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords) = 0; //return true if it's retired
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
@@ -217,12 +217,12 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 	
 	public:
-		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 									const InjectionConfigurationReference& injectorCfg);
 		~ShortTermApproximateBuffer();
 
 		virtual void BackupReadData(uint8_t* const data);
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
+		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
@@ -287,7 +287,7 @@ namespace BorrowedMemory {
 	//#endif
 
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
-		typedef std::unordered_multimap<size_t, std::unique_ptr<uint64_t[]>> LastAccessPeriodPool;
+		typedef std::unordered_multimap<size_t, std::unique_ptr<int64_t[]>> LastAccessPeriodPool;
 		extern LastAccessPeriodPool g_lastAccessPeriodPool;
 	#endif
 }
@@ -303,7 +303,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 
 		uint8_t* GetBackupAddressFromIndex(const size_t index) const;
 
-		virtual void InitializeRecordsAndBackups(const uint64_t period);
+		virtual void InitializeRecordsAndBackups(const int64_t period);
 		virtual void GiveAwayRecordsAndBackups(const bool giveAway);
 
 
@@ -321,7 +321,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 
 	public:
-		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		LongTermApproximateBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 								const InjectionConfigurationReference& injectorCfg);
 
 		LongTermApproximateBuffer(const LongTermApproximateBuffer&) = delete;
@@ -332,7 +332,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		virtual void BackupReadData(uint8_t* const data); 
 
 
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
+		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));

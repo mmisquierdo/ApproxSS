@@ -90,7 +90,7 @@ class GranularFaultInjector : public FaultInjector {
 				void ReviseRecord(const size_t errorCat);
 
 				void AdvanceBerIndex(); 
-				void ResetBerIndex(const uint64_t newCreationPeriod);
+				void ResetBerIndex(const int64_t newCreationPeriod);
 				void ReviseRecords(); 
 
 				DistanceBasedInjectorRecord* GetInjectorRecord(const size_t errorCat, const size_t index);

@@ -20,7 +20,7 @@ PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 	#endif
 }
 
-PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
+PeriodLog::PeriodLog(const int64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_errorsCountsByBit[i] = std::make_unique<uint64_t[]>(injectorCfg.GetBitDepth());
@@ -30,7 +30,7 @@ PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &i
 	this->ResetCounts(period, injectorCfg);
 }
 
-void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
+void PeriodLog::ResetCounts(const int64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	this->m_period = period;
 	std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 

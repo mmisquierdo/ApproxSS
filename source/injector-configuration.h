@@ -12,7 +12,7 @@
 
 #include "compiling-options.h"
 
-extern uint64_t g_currentPeriod;
+extern int64_t g_currentPeriod;
 
 #if DISTANCE_BASED_FAULT_INJECTOR
 	typedef std::pair<double, double> ErrorType; //<mean, std-dev>
@@ -112,7 +112,7 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 
 		#if MULTIPLE_BER_CONFIGURATION
 			const InjectionConfigurationReference& m_reference;
-			uint64_t m_creationPeriod;
+			int64_t m_creationPeriod;
 		#endif
 
 	public:
@@ -126,20 +126,20 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 		#if MULTIPLE_BER_CONFIGURATION
 			ErrorType GetBer(const size_t errorCat, const size_t index) const;	
 
-			uint64_t GetBerCurrentIndex(const size_t errorCat) const;
-			uint64_t GetCreationPeriod() const;
-			uint64_t GetBerIndex() const;
-			uint64_t GetBerIndexFromPeriod(const uint64_t period) const;
+			int64_t GetBerCurrentIndex(const size_t errorCat) const;
+			int64_t GetCreationPeriod() const;
+			int64_t GetBerIndex() const;
+			int64_t GetBerIndexFromPeriod(const int64_t period) const;
 			size_t GetBerCount(const size_t errorCat) const;
 
 			void AdvanceBerIndex();
-			void ResetBerIndex(const uint64_t newCreationPeriod);
+			void ResetBerIndex(const int64_t newCreationPeriod);
 			void UpdateBers();
 			void UpdateBer(const size_t errorCat);
 		#endif
 
 		#if OVERCHARGE_BER 
-			double GetBer(size_t errorCat, uint64_t pastIndex, const uint64_t currentIndex) const;
+			double GetBer(size_t errorCat, int64_t pastIndex, const int64_t currentIndex) const;
 		#endif
 };
 

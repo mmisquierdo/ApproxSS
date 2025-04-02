@@ -270,7 +270,7 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 		this->UpdateBers();
 	}
 
-	void InjectionConfigurationLocal::ResetBerIndex(const uint64_t newCreationPeriod) {
+	void InjectionConfigurationLocal::ResetBerIndex(const int64_t newCreationPeriod) {
 		this->m_creationPeriod = newCreationPeriod;
 		this->UpdateBers();
 	}
@@ -290,19 +290,19 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 		return this->m_reference.GetBerCount(errorCat);
 	}
 
-	uint64_t InjectionConfigurationLocal::GetBerCurrentIndex(const size_t errorCat) const {
+	int64_t InjectionConfigurationLocal::GetBerCurrentIndex(const size_t errorCat) const {
 		return (this->GetBerIndex() % this->GetBerCount(errorCat));
 	}
 
-	uint64_t InjectionConfigurationLocal::GetCreationPeriod() const {
+	int64_t InjectionConfigurationLocal::GetCreationPeriod() const {
 		return this->m_creationPeriod;
 	}
 
-	uint64_t InjectionConfigurationLocal::GetBerIndex() const {
+	int64_t InjectionConfigurationLocal::GetBerIndex() const {
 		return g_currentPeriod - this->GetCreationPeriod();
 	}
 
-	uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const uint64_t period) const {
+	int64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const int64_t period) const {
 		return period - this->GetCreationPeriod();
 	}
 #endif

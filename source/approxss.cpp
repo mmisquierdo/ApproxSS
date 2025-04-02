@@ -75,7 +75,7 @@ void StoreAccessLayer(LayeredAccess& layeredAccess, AccessCounter& accessCounter
 
 uint64_t g_injectionCalls 	= 0; //NOTE: possible race condition, but I don't care
 
-uint64_t g_currentPeriod 	= 0; //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
+int64_t g_currentPeriod 	= std::numeric_limits<int64_t>::min(); //NOTE: possible minor race condition, but 99.9999% inconsequential and also actually impossible in current lock implementation
 
 #if PIN_LOCKED
 	PIN_LOCK g_pinLock;
