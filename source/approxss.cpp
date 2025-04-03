@@ -283,6 +283,11 @@ namespace PintoolControl {
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
 		#if NON_SEQUENTIAL_PERIOD
+			if (g_currentPeriod == period) {
+				IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
+				return
+			}
+			
 			g_currentPeriod = period;
 		#else
 			++g_currentPeriod;
