@@ -279,10 +279,14 @@ namespace PintoolControl {
 		g_levels.pop_back();
 	}
 
-	VOID next_period() {
+	VOID next_period(IF_NON_SEQUENTIAL_PERIOD(const int64_t period)) {
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
-		++g_currentPeriod;
+		#if NON_SEQUENTIAL_PERIOD
+			g_currentPeriod = period;
+		#else
+			++g_currentPeriod;
+		#endif
 
 		ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 
