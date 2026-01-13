@@ -198,7 +198,8 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	DistanceBasedFaultInjector::DistanceBasedFaultInjector(const InjectionConfigurationReference& injectorCfg, const size_t dataSizeInBytes) : FaultInjector(injectorCfg) , m_dataSizeInBytes(dataSizeInBytes) {
 		#if MULTIPLE_BER_CONFIGURATION
 			for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-				this->m_recordArray[i] = std::unique_ptr<DistanceBasedInjectorRecord[]>((DistanceBasedInjectorRecord*) std::malloc(sizeof(DistanceBasedInjectorRecord) * injectorCfg.GetBerCount(i)));
+				//this->m_recordArray[i] = std::unique_ptr<DistanceBasedInjectorRecord[]>((DistanceBasedInjectorRecord*) std::malloc(sizeof(DistanceBasedInjectorRecord) * injectorCfg.GetBerCount(i))); // "not supported" by Pin 4.0
+				this->m_recordArray[i] = std::unique_ptr<DistanceBasedInjectorRecord[]>(new DistanceBasedInjectorRecord[injectorCfg.GetBerCount(i)]);
 
 				for (size_t j = 0; j < injectorCfg.GetBerCount(i); ++j) {
 					this->m_recordArray[i][j] = DistanceBasedInjectorRecord(injectorCfg.GetBer(i, j), this->m_dataSizeInBytes, this->GetBitDepth());

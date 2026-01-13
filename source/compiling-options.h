@@ -65,6 +65,10 @@ constexpr size_t BYTE_SIZE = 8;
 	#define PIN_LOCKED false
 #endif
 
+#ifndef CAUTIOUS_LASTACCESSPERIOD_TAKEOVER
+	#define CAUTIOUS_LASTACCESSPERIOD_TAKEOVER false
+#endif
+
 //USER-DEFINED END
 
 #if PIN_LOCKED

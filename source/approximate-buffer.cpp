@@ -65,11 +65,20 @@ void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 			if (accessIt != g_lastAccessPeriodPool.cend()) {
 				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(accessIt->second.release());
 				g_lastAccessPeriodPool.erase(accessIt);
-			} else {
-				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>((uint64_t*) std::malloc(this->GetNumberOfElements() * sizeof(uint64_t)));
-			}
+			
 
-			if (this->m_lastAccessPeriod[0] != period) {
+				#if CAUTIOUS_LASTACCESSPERIOD_TAKEOVER
+					std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
+				#else
+					if (this->m_lastAccessPeriod[0] != period && this->m_lastAccessPeriod[this->GetNumberOfElements()-1] != period) { // should be safe enough 
+						std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
+					}
+				#endif
+			} else {
+				//this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>((uint64_t*) std::malloc(this->GetNumberOfElements() * sizeof(uint64_t))); "not supported" by Pin 4.0
+				//this->m_lastAccessPeriod = std::make_unique_for_overwrite<uint64_t[]>(this->GetNumberOfElements()); "not supported" by Pin 4.0, requires C++20
+				
+				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(new uint64_t[this->GetNumberOfElements()]);
 				std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
 			}
 		#else
@@ -810,7 +819,10 @@ void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t perio
 		this->m_readBackups = std::unique_ptr<uint8_t[]>(readIt->second.release());
 		g_readBackups.erase(readIt);
 	} else {
-		this->m_readBackups = std::unique_ptr<uint8_t[]>((uint8_t*) std::malloc(this->GetTotalNecessaryReadBackupSize()));
+		//this->m_readBackups = std::unique_ptr<uint8_t[]>((uint8_t*) std::malloc(this->GetTotalNecessaryReadBackupSize())); //"not supported" by Pin 4.0
+		//this->m_readBackups = std::make_unique_for_overwrite<uint8_t[]>(this->GetTotalNecessaryReadBackupSize()); //requires C++20, stuck in C++17 by Pin 4.0
+
+		this->m_readBackups = std::unique_ptr<uint8_t[]>(new uint8_t[this->GetTotalNecessaryReadBackupSize()]);
 	}
 
 	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
@@ -819,7 +831,8 @@ void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t perio
 			this->m_writeSupportRecords = std::unique_ptr<WriteSupportRecord[]>(writeIt->second.release());
 			g_writeSupportRecordPool.erase(writeIt);
 		} else {
-			this->m_writeSupportRecords = std::unique_ptr<WriteSupportRecord[]>((WriteSupportRecord*) std::malloc(sizeof(WriteSupportRecord) * this->GetNumberOfElements()));
+			//this->m_writeSupportRecords = std::unique_ptr<WriteSupportRecord[]>((WriteSupportRecord*) std::malloc(sizeof(WriteSupportRecord) * this->GetNumberOfElements())); // "not supported" in Pin 4.0
+			this->m_writeSupportRecords = std::unique_ptr<WriteSupportRecord[]>(new WriteSupportRecord[this->GetNumberOfElements()]);
 		}
 	#endif
 }
