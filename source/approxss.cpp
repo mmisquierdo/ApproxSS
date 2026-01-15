@@ -999,10 +999,11 @@ INT32 Usage() {
 /* Commandline Switches 												*/
 /* ==================================================================== */
 
-KNOB<std::string> InjectorConfigurationFile(KNOB_MODE_WRITEONCE, "pintool", "cfg", "", "specify the error injector configuration file");
-KNOB<std::string> EnergyProfileFile(KNOB_MODE_WRITEONCE, "pintool", "pfl", "", "specify the energy consumption profile");
-KNOB<std::string> AccessOutputFile(KNOB_MODE_WRITEONCE, "pintool", "aof", "", "specify the memory access output log");
-KNOB<std::string> EnergyConsumptionOutputFile(KNOB_MODE_WRITEONCE, "pintool", "cof", "", "specify the energy consumpion output log");
+KNOB<std::string> InjectorConfigurationFile(	KNOB_MODE_WRITEONCE, "pintool", "cfg", 	"", "specify the error injector configuration file");
+KNOB<std::string> EnergyProfileFile(			KNOB_MODE_WRITEONCE, "pintool", "pfl", 	"", "specify the energy consumption profile");
+KNOB<std::string> AccessOutputFile(				KNOB_MODE_WRITEONCE, "pintool", "aof", 	"", "specify the memory access output log");
+KNOB<std::string> EnergyConsumptionOutputFile(	KNOB_MODE_WRITEONCE, "pintool", "cof", 	"", "specify the energy consumpion output log");
+KNOB<std::string> RNGSeed(						KNOB_MODE_WRITEONCE, "pintool", "seed", "", "specify the initial (pseudo)random number generation seed (unsigned int)");
 
 /* ==================================================================== */
 /* Main																	*/
@@ -1012,7 +1013,10 @@ int main(const int argc, char* argv[]) {
 	g_levels.push_back(-1);
 	g_sequenceHash = HashValue(g_levels.back());
 
-	srand((unsigned)getpid() * (unsigned)time(0));   
+	srand((unsigned)getpid() * (unsigned)time(0));  
+	if (!RNGSeed.Value().empty()) {
+		FaultInjector::generator = std::default_random_engine{static_cast<unsigned int>(std::stoul(RNGSeed.Value()))};
+	}
 
 	// Initialize symbol table code, needed for rtn instrumentation
 	PIN_InitSymbols();
