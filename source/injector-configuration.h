@@ -69,9 +69,9 @@ class InjectionConfigurationBase {
 		void SetBitDepth(const size_t bitDepth);
 
 		static ErrorType GetZeroBerValue();
-		static bool ShouldGoOn(const std::pair<double, double>& ber);
-		static bool ShouldGoOn(const double ber);
-		static bool ShouldGoOn(double const * const ber);
+		static bool HasActiveBER(const std::pair<double, double>& ber);
+		static bool HasActiveBER(const double ber);
+		static bool HasActiveBER(double const * const ber);
 };
 
 class InjectionConfigurationReference : public virtual InjectionConfigurationBase {
@@ -106,7 +106,7 @@ class InjectionConfigurationReference : public virtual InjectionConfigurationBas
 
 class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 	private:
-		std::array<bool, ErrorCategory::Size> m_shouldGoOn;
+		std::array<bool, ErrorCategory::Size> m_isInjectable;
 
 		std::array<ErrorType, ErrorCategory::Size> m_bers;
 
@@ -118,8 +118,8 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 	public:
 		InjectionConfigurationLocal(const InjectionConfigurationReference& reference);
 
-		bool GetShouldGoOn(const size_t errorCat) const;
-		void ReviseShouldGoOn(const size_t errorCat);
+		bool isInjectable(const size_t errorCat) const;
+		void ReviseInjectability(const size_t errorCat);
 	
 		ErrorType GetBer(const size_t errorCat) const;
 

@@ -151,7 +151,7 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 
 	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
-		if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
+		if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
 			this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 			this->m_lastPassiveInjectionPeriod = period;
 		}
@@ -198,7 +198,7 @@ size_t ApproximateBuffer::GetTotalNecessaryReadBackupSize() const {
 
 //MUST LOCK
 bool ApproximateBuffer::GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const {
-	return isThreadInjectionEnabled IF_PIN_LOCKED(&& isBufferInThread) && this->m_faultInjector.GetShouldGoOn(errorCat); 
+	return isThreadInjectionEnabled IF_PIN_LOCKED(&& isBufferInThread) && this->m_faultInjector.isInjectable(errorCat); 
 }
 
 size_t ApproximateBuffer::GetIndexFromAddress(uint8_t const * const address) const {
@@ -262,7 +262,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 			this->ApplyPassiveFault(this->m_initialAddress, this->m_finalAddress);
 		#else
 			if (this->GetCurrentPassiveBerMarker() != this->m_lastPassiveInjectionPeriod) {
-				if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
+				if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
 					this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 					this->m_lastPassiveInjectionPeriod = g_currentPeriod;
 				}
@@ -273,7 +273,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 	#if !DISTANCE_BASED_FAULT_INJECTOR
 		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
-			if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
+			if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
 				size_t elementIndex = this->GetIndexFromAddress(initialAddress);
 
 				for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes, ++elementIndex) {					
@@ -284,7 +284,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 
 		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(uint8_t * const accessedAddress) {
-			if (this->m_faultInjector.GetShouldGoOn(ErrorCategory::Passive)) {
+			if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
 				const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
 				this->ApplyPassiveFault(elementIndex, accessedAddress);
 			}

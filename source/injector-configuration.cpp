@@ -87,15 +87,15 @@ void InjectionConfigurationBase::SetConfigurationId(const int64_t id) {
 	this->m_configurationId = id;
 }
 
-bool InjectionConfigurationBase::ShouldGoOn(const std::pair<double, double>& ber) {
+bool InjectionConfigurationBase::HasActiveBER(const std::pair<double, double>& ber) {
 	return !(ber.first == 0 && ber.second == 0);
 }
 
-bool InjectionConfigurationBase::ShouldGoOn(const double ber) {
+bool InjectionConfigurationBase::HasActiveBER(const double ber) {
 	return ber != 0;
 }
 
-bool InjectionConfigurationBase::ShouldGoOn(double const * const ber) {
+bool InjectionConfigurationBase::HasActiveBER(double const * const ber) {
 	return ber != nullptr;
 }
 
@@ -235,26 +235,26 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 		
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_bers[i] = reference.GetBer(i);
-			this->ReviseShouldGoOn(i);
+			this->ReviseInjectability(i);
 		}
 	}
 #endif
 
-void InjectionConfigurationLocal::ReviseShouldGoOn(const size_t errorCat) {
+void InjectionConfigurationLocal::ReviseInjectability(const size_t errorCat) {
 	#if MULTIPLE_BER_CONFIGURATION && ENABLE_PASSIVE_INJECTION
-		//this->m_shouldGoOn[errorCat] = (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->ShouldGoOn(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
-		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
+		//this->m_isInjectable[errorCat] = (this->HasActiveBER(this->GetBer(errorCat)) && errorCat != ErrorCategory::Passive) || (this->HasActiveBER(this->GetBer(errorCat)) && errorCat == ErrorCategory::Passive && this->GetBerCount(errorCat) <= 1);
+		this->m_isInjectable[errorCat] = this->HasActiveBER(this->GetBer(errorCat)) && (errorCat != ErrorCategory::Passive || this->GetBerCount(errorCat) <= 1);
 	#else
-		this->m_shouldGoOn[errorCat] = this->ShouldGoOn(this->GetBer(errorCat));
+		this->m_isInjectable[errorCat] = this->HasActiveBER(this->GetBer(errorCat));
 	#endif
 
 	#if LS_BIT_DROPPING
-		this->m_shouldGoOn[errorCat] = this->m_shouldGoOn[errorCat] || this->HasLSBDropping();
+		this->m_isInjectable[errorCat] = this->m_isInjectable[errorCat] || this->HasLSBDropping();
 	#endif
 }
 
-bool InjectionConfigurationLocal::GetShouldGoOn(const size_t errorCat) const {
-	return this->m_shouldGoOn[errorCat];
+bool InjectionConfigurationLocal::isInjectable(const size_t errorCat) const {
+	return this->m_isInjectable[errorCat];
 }
 
 ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
@@ -283,7 +283,7 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 
 	void InjectionConfigurationLocal::UpdateBer(const size_t errorCat) {
 		this->m_bers[errorCat] = this->m_reference.GetBer(errorCat, this->GetBerIndex());
-		this->ReviseShouldGoOn(errorCat);
+		this->ReviseInjectability(errorCat);
 	}
 
 	size_t InjectionConfigurationLocal::GetBerCount(const size_t errorCat) const {

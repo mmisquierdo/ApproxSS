@@ -20,7 +20,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 				data[0] = data[0] & (FaultInjector::bitDroppingMask << this->GetLSBDropped()); //always sets first bit to zero
 			}
 
-			if (!FaultInjector::ShouldGoOn(ber)) {
+			if (!FaultInjector::HasActiveBER(ber)) {
 				return;
 			}
 
@@ -62,7 +62,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 				data[0] = data[0] & (FaultInjector::bitDroppingMask << this->GetLSBDropped()); //always sets first bit to zero
 			}
 
-			if (!FaultInjector::ShouldGoOn(ber)) {
+			if (!FaultInjector::HasActiveBER(ber)) {
 				return;
 			}
 
@@ -172,7 +172,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 	DistanceBasedInjectorRecord::DistanceBasedInjectorRecord(){}
 
 	DistanceBasedInjectorRecord::DistanceBasedInjectorRecord(const std::pair<double, double>& meanAndDev, const size_t dataSizeInBytes, const size_t bitDepth) : m_errorDistanceDistribution(meanAndDev.first, meanAndDev.second) {
-		if (!InjectionConfigurationBase::ShouldGoOn(meanAndDev)) {
+		if (!InjectionConfigurationBase::HasActiveBER(meanAndDev)) {
 			this->m_nextErrorDistance = std::numeric_limits<int64_t>::max();
 		} else {
 			this->m_nextErrorDistance = 0;
