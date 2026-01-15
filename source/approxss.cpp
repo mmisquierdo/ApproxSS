@@ -1010,18 +1010,19 @@ KNOB<std::string> RNGSeed(						KNOB_MODE_WRITEONCE, "pintool", "seed", "", "spe
 /* ==================================================================== */
 
 int main(const int argc, char* argv[]) {
+	// Initialize symbol table code, needed for rtn instrumentation
+	PIN_InitSymbols();
+	if (PIN_Init(argc, argv)) return Usage();
+
+	// Initialize ApproxSS access tracking structures
 	g_levels.push_back(-1);
 	g_sequenceHash = HashValue(g_levels.back());
 
-	srand((unsigned)getpid() * (unsigned)time(0));  
+	// Etc
+	srand((unsigned)getpid() * (unsigned)time(0));
 	if (!RNGSeed.Value().empty()) {
 		FaultInjector::generator = std::default_random_engine{static_cast<unsigned int>(std::stoul(RNGSeed.Value()))};
 	}
-
-	// Initialize symbol table code, needed for rtn instrumentation
-	PIN_InitSymbols();
-
-	if (PIN_Init(argc, argv)) return Usage();
 
 	PintoolOutput::PrintPintoolConfiguration();
 	PintoolInput::ProcessInjectorConfiguration(InjectorConfigurationFile.Value());
