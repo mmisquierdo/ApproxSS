@@ -64,7 +64,7 @@ In terms of implementation, the random number generator used by the error inject
 
 12. PIN_LOCKED: This flag enables safe approximation of multithreaded target applications, adding the necessary mutexes. The addition and control of approximate buffers is made on an individual thread level, allowing one thread to access the data precisely and another, approximatly. Additionally, two or more threads can have the same approximate buffer - however, as of the current version, they must have the same configuration.
 
-13. LS_BIT_DROPPING: enables the dropping of N least significante bits (up to 8) from elements of approximate buffers. N can be input in the injection configurations.
+13. LSB_DROPPING: enables the dropping of N least significante bits (up to 8) from elements of approximate buffers. N can be input in the injection configurations.
 
 ## Instrumentation Markers
 

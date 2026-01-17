@@ -12,11 +12,9 @@ class ApproximateBuffer;
 #include "injector-configuration.h"
 
 #if LOG_FAULTS
-	#define AND_LOG_PARAMETER , uint64_t* const injectedByBit
-	#define AND_LOG_ARGUMENT(X) , X
+	#define IF_COMMA_LOGGING_FAULTS(X) , X
 #else
-	#define AND_LOG_PARAMETER
-	#define AND_LOG_ARGUMENT(X)
+	#define IF_COMMA_LOGGING_FAULTS(X)
 #endif
 
 extern uint64_t g_injectionCalls;
@@ -32,13 +30,13 @@ class FaultInjector : public InjectionConfigurationLocal {
 		FaultInjector(const InjectionConfigurationReference& injectorCfg);
 
 		#if !MULTIPLE_BER_ELEMENT
-			void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+			IF_LSBDROPPED_ELSE(bool, void) InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 		#else
-			void InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+			IF_LSBDROPPED_ELSE(bool, void) InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 		#endif
 
 		#if OVERCHARGE_FLIP_BACK
-			void InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER);
+			void InjectFaultOvercharged(uint8_t* const data, double ber IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 		#endif
 };
 
@@ -49,10 +47,10 @@ class GranularFaultInjector : public FaultInjector {
 	public:
 		GranularFaultInjector(const InjectionConfigurationReference& injectorCfg);
 
-		void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+		void InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 
 		#if OVERCHARGE_FLIP_BACK
-			void InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER);
+			void InjectFaultOvercharged(uint8_t* const data, double ber IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 		#endif
 };
 
@@ -94,15 +92,15 @@ class GranularFaultInjector : public FaultInjector {
 				void ReviseRecords(); 
 
 				DistanceBasedInjectorRecord* GetInjectorRecord(const size_t errorCat, const size_t index);
-				void InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+				void InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 			#endif
 			
 			DistanceBasedFaultInjector(const InjectionConfigurationReference& injectorCfg, const size_t dataSizeInBytes);
 
 			DistanceBasedInjectorRecord* GetInjectorRecord(const size_t errorCat);
 
-			void InjectFault(uint8_t* data, DistanceBasedInjectorRecord& injectorRecord, ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER); 
-			void InjectFault(uint8_t* data, const size_t errorCat, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER);
+			void InjectFault(uint8_t* data, DistanceBasedInjectorRecord& injectorRecord, ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)); 
+			void InjectFault(uint8_t* data, const size_t errorCat, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit));
 	};
 #endif
 

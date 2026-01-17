@@ -131,7 +131,7 @@ class ApproximateBuffer : public Range {
 
 		virtual ~ApproximateBuffer();		
 
-		virtual void BackupReadData(uint8_t* const data) = 0;
+		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false)) = 0;
 
 		void NextPeriod(const uint64_t period);
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
@@ -155,7 +155,11 @@ class ApproximateBuffer : public Range {
 /* Short Term Approximate Buffer										*/
 /* ==================================================================== */
 
+#if LSB_DROPPING
+typedef std::map<uint8_t* const, std::pair<bool, uint8_t*>> RemainingReads; // bool is LSB_DROPPING
+#else
 typedef std::map<uint8_t* const, uint8_t*> RemainingReads;
+#endif
 
 #if MULTIPLE_BER_CONFIGURATION
 	#if LOG_FAULTS
@@ -191,17 +195,23 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 	protected: 
 		PendingWrites m_pendingWrites;
 		RemainingReads m_remainingReads;
-		RemainingReads::const_iterator m_readHint;
+		//#if LSB_DROPPING
+			//RemainingReads::iterator m_readHint;
+		//#else
+			RemainingReads::iterator m_readHint;
+		//#endif
 
 		PendingWrites::const_iterator ApplyFaultyWrite(const PendingWrites::const_iterator it);
 		void ApplyFaultyWrite(uint8_t * const accessedAddress);
 		void ApplyFaultyWrite(uint8_t * const initialAddress, uint8_t const * const finalAddress);
 		void ApplyAllWriteErrors();
 		void RecordFaultyWrite(uint8_t* const address, PendingWrites::const_iterator& hint);
-		RemainingReads::const_iterator ReverseFaultyRead(const RemainingReads::const_iterator it);
-		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const accessedAddess);
-		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress);
+
+		RemainingReads::const_iterator ReverseFaultyRead(const RemainingReads::const_iterator it 							IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
+		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const accessedAddess 									IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
+		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
 		void ReverseAllReadErrors();
+
 		RemainingReads::const_iterator InvalidateRemainingRead(const RemainingReads::const_iterator it);
 		void InvalidateRemainingRead(uint8_t * const accessedAddress);
 		void InvalidateRemainingRead(uint8_t * const initialAddress, uint8_t const * const finalAddress);
@@ -213,6 +223,10 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 			static uint64_t* GetWriteErrorsLogFromIterator(const PendingWrites::const_iterator& it);
 		#endif
 
+		#if LSB_DROPPING
+			bool IsBackedUp(uint8_t const * const targetAddress);
+		#endif
+
 		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 	
@@ -221,7 +235,8 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 									const InjectionConfigurationReference& injectorCfg);
 		~ShortTermApproximateBuffer();
 
-		virtual void BackupReadData(uint8_t* const data);
+		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false));
+
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
@@ -237,9 +252,10 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 /* ==================================================================== */
 
 struct ErrorStatus {
-	static constexpr uint8_t None = 0;
-	static constexpr uint8_t Read = 1;
-	static constexpr uint8_t Write = 2;
+	static constexpr uint8_t None = 	0;
+	static constexpr uint8_t Read = 	1 << 0;
+	static constexpr uint8_t Write =	1 << 1;
+	static constexpr uint8_t LSBDrop = 	1 << 2;
 };
 
 class InjectionRecord {
@@ -315,7 +331,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		auto GetWriteBer(const size_t elementIndex);
 
 		void ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject);
-		void ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject);
+		void ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
 
 		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
@@ -329,8 +345,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 
 		~LongTermApproximateBuffer();
 		
-		virtual void BackupReadData(uint8_t* const data); 
-
+		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false));
 
 		virtual void ReactivateBuffer(const uint64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords);

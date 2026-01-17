@@ -333,7 +333,7 @@ void PintoolInput::ProcessInjectorConfiguration(const std::string& configuration
 				}
 				break;
 			case InjectorFieldCode::LSBDropped:
-				#if LS_BIT_DROPPING
+				#if LSB_DROPPING
 					{
 						const int64_t LSBDropped = std::stoll(value);
 						if (LSBDropped < 0) {

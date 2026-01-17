@@ -25,7 +25,7 @@ InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurat
 	this->m_configurationId = other.GetConfigurationId();
 	this->m_bitDepth = other.GetBitDepth();
 
-	#if LS_BIT_DROPPING
+	#if LSB_DROPPING
 		this->m_LSBDropped = other.GetLSBDropped();
 	#endif
 }
@@ -34,7 +34,7 @@ InjectionConfigurationBase::InjectionConfigurationBase(const InjectionConfigurat
 	this->m_configurationId = other.GetConfigurationId();
 	this->m_bitDepth = other.GetBitDepth();
 
-	#if LS_BIT_DROPPING
+	#if LSB_DROPPING
 		this->m_LSBDropped = other.GetLSBDropped();
 	#endif
 }
@@ -43,7 +43,7 @@ InjectionConfigurationBase::InjectionConfigurationBase() {
 	this->m_configurationId = 0;
 	this->m_bitDepth = 8;
 
-	#if LS_BIT_DROPPING
+	#if LSB_DROPPING
 		this->m_LSBDropped = 0;
 	#endif
 }
@@ -56,7 +56,7 @@ size_t InjectionConfigurationBase::GetBitDepth() const {
 	return this->m_bitDepth;
 }
 
-#if LS_BIT_DROPPING
+#if LSB_DROPPING
 	size_t InjectionConfigurationBase::GetLSBDropped() const {
 		return this->m_LSBDropped;
 	}
@@ -152,7 +152,7 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 	s += lineStart + "ConfigurationId: "	+ std::to_string(this->GetConfigurationId())	+ "\n";
 	s += lineStart + "BitDepth: "			+ std::to_string(this->GetBitDepth())			+ "\n";
 
-	#if LS_BIT_DROPPING
+	#if LSB_DROPPING
 		s += lineStart + "LSBDropped: "		+ std::to_string(this->GetLSBDropped())			+ "\n";
 	#endif
 
@@ -229,7 +229,7 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 		this->m_configurationId = reference.GetConfigurationId(); //TODO: fix this shit! for some reason it would only call the InjectionConfigurationBase default constructor, why?????
 		this->m_bitDepth = reference.GetBitDepth();
 
-		#if LS_BIT_DROPPING
+		#if LSB_DROPPING
 			this->m_LSBDropped = reference.GetLSBDropped();
 		#endif
 		
@@ -248,7 +248,7 @@ void InjectionConfigurationLocal::ReviseInjectability(const size_t errorCat) {
 		this->m_isInjectable[errorCat] = this->HasActiveBER(this->GetBer(errorCat));
 	#endif
 
-	#if LS_BIT_DROPPING
+	#if LSB_DROPPING
 		this->m_isInjectable[errorCat] = this->m_isInjectable[errorCat] || this->HasLSBDropping();
 	#endif
 }

@@ -57,19 +57,30 @@ constexpr size_t BYTE_SIZE = 8;
 	#define LOG_FAULTS true
 #endif
 
-#ifndef LS_BIT_DROPPING //NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER WRITE ERRORS
-	#define LS_BIT_DROPPING (DEFAULT_FAULT_INJECTOR && true)
-#endif
-
-#ifndef PIN_LOCKED
-	#define PIN_LOCKED false
-#endif
-
 #ifndef CAUTIOUS_LASTACCESSPERIOD_TAKEOVER
 	#define CAUTIOUS_LASTACCESSPERIOD_TAKEOVER false
 #endif
 
-//USER-DEFINED END
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef LSB_DROPPING //NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER WRITE ERRORS
+	#define LSB_DROPPING (DEFAULT_FAULT_INJECTOR && true)
+#endif
+
+#if LSB_DROPPING
+	#define IF_COMMA_LSBDROPPED(X) ,X
+	#define IF_LSBDROPPED(X) X
+	#define IF_LSBDROPPED_ELSE(X, Y) X
+#else 
+	#define IF_COMMA_LSBDROPPED(X)
+	#define IF_LSBDROPPED(X) X
+	#define IF_LSBDROPPED_ELSE(X, Y) Y
+#endif
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef PIN_LOCKED
+	#define PIN_LOCKED false
+#endif
 
 #if PIN_LOCKED
 	#define IF_PIN_LOCKED(X) X
@@ -83,6 +94,10 @@ constexpr size_t BYTE_SIZE = 8;
 
 #define IF_PIN_PRIVATE_LOCKED(X)
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+//USER-DEFINED END
 
 #if !DEFAULT_FAULT_INJECTOR && !GRANULAR_FAULT_INJECTOR && !DISTANCE_BASED_FAULT_INJECTOR
 #	error "ApproxSS compilation error: no fault injector defined!"

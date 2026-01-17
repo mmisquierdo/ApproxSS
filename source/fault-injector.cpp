@@ -6,22 +6,24 @@ std::uniform_real_distribution<double> FaultInjector::occurrenceDistribution{0.0
 FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg) : InjectionConfigurationLocal(injectorCfg) {}
 
 #if !MULTIPLE_BER_ELEMENT
-	void FaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+	IF_LSBDROPPED_ELSE(bool, void) FaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		++g_injectionCalls;
 		bool isFaultInjected = false;
 
-		#if LS_BIT_DROPPING
+		#if LSB_DROPPING
+			bool isRandomFaultInjected = false;
+
 			if (this->HasLSBDropping()) {
 				if (toBackup) {
-					toBackup->BackupReadData(data);
+					toBackup->BackupReadData(data, true);
 					isFaultInjected = true;
 				}
 
-				data[0] = data[0] & (FaultInjector::bitDroppingMask << this->GetLSBDropped()); //always sets first bit to zero
+				data[0] = data[0] & (FaultInjector::bitDroppingMask << this->GetLSBDropped()); //always sets first bit to zero, cant rely on toBackup because of write-faults
 			}
 
 			if (!FaultInjector::HasActiveBER(ber)) {
-				return;
+				return this->HasLSBDropping();
 			}
 
 			const size_t countStart = this->GetLSBDropped();;
@@ -34,8 +36,11 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 
 			if (randomProbability < ber) {
 				if (toBackup && !isFaultInjected) {
-					toBackup->BackupReadData(data);
+					toBackup->BackupReadData(data); //isLSBDrop = false
 					isFaultInjected = true;
+					#if LSB_DROPPING
+						isRandomFaultInjected = true;
+					#endif
 				}
 
 				const uint8_t faultMask = FaultInjector::bitMask << (bitCount % BYTE_SIZE);
@@ -46,16 +51,22 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 				#endif
 			}
 		}
+
+		#if LSB_DROPPING
+			return isRandomFaultInjected;
+		#endif
 	}
 #else
-	void FaultInjector::InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+	IF_LSBDROPPED_ELSE(bool, void) FaultInjector::InjectFault(uint8_t* const data, double const * const ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		++g_injectionCalls;
 		bool isFaultInjected = false;
 
-		#if LS_BIT_DROPPING
+		#if LSB_DROPPING
+			bool isRandomFaultInjected = false;
+
 			if (this->HasLSBDropping()) {
 				if (toBackup) {
-					toBackup->BackupReadData(data);
+					toBackup->BackupReadData(data, true);
 					isFaultInjected = true;
 				}
 
@@ -63,7 +74,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 			}
 
 			if (!FaultInjector::HasActiveBER(ber)) {
-				return;
+				return this->HasLSBDropping();
 			}
 
 			const size_t countStart = this->GetLSBDropped();;
@@ -76,9 +87,12 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 
 			if (randomProbability < ber[bitCount]) {
 				if (toBackup && !isFaultInjected) {
-					toBackup->BackupReadData(data);
+					toBackup->BackupReadData(data); //isLSBDrop = false
 					isFaultInjected = true;
 				}
+				#if LSB_DROPPING
+					isRandomFaultInjected = true;
+				#endif
 
 				const uint8_t faultMask = FaultInjector::bitMask << (bitCount % BYTE_SIZE);
 				data[bitCount/BYTE_SIZE] ^= faultMask;
@@ -88,11 +102,15 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 				#endif
 			}
 		}
+
+		#if LSB_DROPPING
+			return isRandomFaultInjected;
+		#endif
 	}
 #endif
 
 #if OVERCHARGE_FLIP_BACK
-	void FaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER) {
+	void FaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		++g_injectionCalls;
 
 		#if LOG_FAULTS
@@ -119,7 +137,7 @@ FaultInjector::FaultInjector(const InjectionConfigurationReference& injectorCfg)
 			}
 		}
 
-		this->InjectFault(data, ber, nullptr AND_LOG_ARGUMENT(injectedByBit));
+		this->InjectFault(data, ber, nullptr IF_COMMA_LOGGING_FAULTS(injectedByBit));
 	}
 #endif
 
@@ -128,7 +146,7 @@ GranularFaultInjector::GranularFaultInjector(const InjectionConfigurationReferen
 	this->m_instanceDistribution = std::uniform_int_distribution<size_t>(0, this->GetBitDepth() - 1);
 }
 
-void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 	++g_injectionCalls;	
 	const double randomProbability = occurrenceDistribution(FaultInjector::generator);
 
@@ -149,7 +167,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 }
 
 #if OVERCHARGE_FLIP_BACK
-	void GranularFaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber AND_LOG_PARAMETER) {
+	void GranularFaultInjector::InjectFaultOvercharged(uint8_t* const data, double ber IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		++g_injectionCalls;
 
 		for (/**/; ber * static_cast<double>(this->GetBitDepth()) > 1; --ber) {
@@ -163,7 +181,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 			#endif
 		}
 
-		this->InjectFault(data, ber, nullptr AND_LOG_ARGUMENT(injectedByBit));
+		this->InjectFault(data, ber, nullptr IF_COMMA_LOGGING_FAULTS(injectedByBit));
 	}
 #endif
 
@@ -238,14 +256,14 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 			return &(this->m_recordArray[errorCat][index % this->GetBerCount(errorCat)]);
 		}
 
-		void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+		void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const size_t recordIndex, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 			DistanceBasedInjectorRecord& record = *(this->GetInjectorRecord(errorCat, recordIndex));
 
 			/*if (!record.IsEnabled()) {
 				return;
 			}*/
 
-			this->InjectFault(data, record, accessSizeInBytes, toBackup AND_LOG_ARGUMENT(injectedByBit));
+			this->InjectFault(data, record, accessSizeInBytes, toBackup IF_COMMA_LOGGING_FAULTS(injectedByBit));
 		}
 	#endif
 
@@ -257,7 +275,7 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		#endif
 	}
 
-	void DistanceBasedFaultInjector::InjectFault(uint8_t* data, DistanceBasedInjectorRecord& injectorRecord, ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+	void DistanceBasedFaultInjector::InjectFault(uint8_t* data, DistanceBasedInjectorRecord& injectorRecord, ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		++g_injectionCalls;
 		const uint8_t* lastBackedupReadData = nullptr; 
 
@@ -286,13 +304,13 @@ void GranularFaultInjector::InjectFault(uint8_t* const data, const double ber, A
 		}
 	}
 
-	void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup AND_LOG_PARAMETER) {
+	void DistanceBasedFaultInjector::InjectFault(uint8_t* data, const size_t errorCat, const ssize_t accessSizeInBytes, ApproximateBuffer* const toBackup IF_COMMA_LOGGING_FAULTS(uint64_t* const injectedByBit)) {
 		DistanceBasedInjectorRecord& record = *(this->GetInjectorRecord(errorCat));
 
 		/*if (!record.IsEnabled()) {
 			return;
 		}*/
 
-		this->InjectFault(data, record, accessSizeInBytes, toBackup AND_LOG_ARGUMENT(injectedByBit));
+		this->InjectFault(data, record, accessSizeInBytes, toBackup IF_COMMA_LOGGING_FAULTS(injectedByBit));
 	}
 #endif

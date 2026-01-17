@@ -152,7 +152,7 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 
 	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
 		if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
-			this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
+			this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 			this->m_lastPassiveInjectionPeriod = period;
 		}
 	#endif
@@ -263,7 +263,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 		#else
 			if (this->GetCurrentPassiveBerMarker() != this->m_lastPassiveInjectionPeriod) {
 				if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
-					this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
+					this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
 					this->m_lastPassiveInjectionPeriod = g_currentPeriod;
 				}
 			}
@@ -330,7 +330,7 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 					#endif
 
 					if (ber || !MULTIPLE_BER_CONFIGURATION) { //if MULTIPLE_BER_CONFIGURATION is false, the check is optimized away
-						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr AND_LOG_ARGUMENT(passiveErrorCount));
+						this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr IF_COMMA_LOGGING_FAULTS(passiveErrorCount));
 					}
 				}
 			#endif
@@ -416,7 +416,7 @@ void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::arra
 ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 													const InjectionConfigurationReference& injectorCfg) : 
 													ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg),
-													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cend())
+													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cbegin())
 													{}
 
 //WAS LOCKED (INDIRECTLY)
@@ -455,10 +455,16 @@ bool ShortTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 }
 
 //MUST LOCK
-void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data) {
-	uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
-	std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
-	this->m_remainingReads.insert(this->m_readHint, {data, readBackup});
+void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop/*= false*/)) {
+	#if LSB_DROPPING
+		uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
+		std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
+		this->m_readHint = this->m_remainingReads.insert(this->m_readHint, {data, {isLSBDrop, readBackup}});
+	#else
+		uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
+		std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
+		this->m_readHint = this->m_remainingReads.insert(this->m_readHint, {data, readBackup});
+	#endif
 }
 
 //WAS LOCKED
@@ -517,9 +523,9 @@ PendingWrites::const_iterator ShortTermApproximateBuffer::ApplyFaultyWrite(const
 	const auto ber = ShortTermApproximateBuffer::GetWriteBerFromIterator(it); 
 
 	#if !DISTANCE_BASED_FAULT_INJECTOR
-		this->m_faultInjector.InjectFault(address, ber, nullptr AND_LOG_ARGUMENT(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
+		this->m_faultInjector.InjectFault(address, ber, nullptr IF_COMMA_LOGGING_FAULTS(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
 	#else
-		this->m_faultInjector.InjectFault(address, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr AND_LOG_ARGUMENT(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
+		this->m_faultInjector.InjectFault(address, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr IF_COMMA_LOGGING_FAULTS(ShortTermApproximateBuffer::GetWriteErrorsLogFromIterator(it)));
 	#endif
 
 	return this->m_pendingWrites.erase(it);
@@ -583,26 +589,37 @@ void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, Pendi
 }
 
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(const RemainingReads::const_iterator it) {
-	std::copy_n(it->second, this->m_minimumReadBackupSize, it->first);
-	delete[] it->second;
-	return this->m_remainingReads.erase(it);
+RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(const RemainingReads::const_iterator it IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
+	#if LSB_DROPPING
+		if (it->second.first && !reverseLSBDrop) { //if just LSBDropping...
+			return std::next(it);
+		} else {
+			std::copy_n(it->second.second, this->m_minimumReadBackupSize, it->first);
+			delete[] it->second.second;
+			return this->m_remainingReads.erase(it);
+		}
+	#else
+		std::copy_n(it->second, this->m_minimumReadBackupSize, it->first);
+		delete[] it->second;
+		return this->m_remainingReads.erase(it);
+	#endif
 }
 
+
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const accessedAddress) {
+RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const accessedAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
 	RemainingReads::const_iterator it = this->m_remainingReads.find(accessedAddress);
 	if (it != this->m_remainingReads.cend()) {
-		it = this->ReverseFaultyRead(it);
+		it = this->ReverseFaultyRead(it IF_COMMA_LSBDROPPED(reverseLSBDrop));
 	}
 	return it;
 }
 
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress) {
+RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
 	RemainingReads::const_iterator lowerIt = this->m_remainingReads.lower_bound(initialAddress); 
 	while (lowerIt != this->m_remainingReads.cend() && lowerIt->first < finalAddress) {
-		lowerIt = this->ReverseFaultyRead(lowerIt);
+		lowerIt = this->ReverseFaultyRead(lowerIt IF_COMMA_LSBDROPPED(reverseLSBDrop));
 	}
 	return lowerIt;
 }
@@ -610,13 +627,17 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uin
 //MUST LOCK
 void ShortTermApproximateBuffer::ReverseAllReadErrors() {
 	for (RemainingReads::const_iterator it = this->m_remainingReads.cbegin(); it != this->m_remainingReads.cend(); /**/) {
-		it = this->ReverseFaultyRead(it);
+		it = this->ReverseFaultyRead(it); //reverseLSBDrop = true
 	}
 }
 
 //MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::InvalidateRemainingRead(const RemainingReads::const_iterator it) {
-	delete[] it->second;
+	#if LSB_DROPPING
+		delete[] it->second.second;
+	#else
+		delete[] it->second;
+	#endif
 	return this->m_remainingReads.erase(it);
 }
 
@@ -704,6 +725,16 @@ void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERA
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
+#if LSB_DROPPING
+	bool ShortTermApproximateBuffer::IsBackedUp(uint8_t const * const targetAddress) {
+		while (this->m_readHint != this->m_remainingReads.cend() && this->m_readHint->first <= targetAddress) {
+			this->m_readHint++;
+		}
+		
+		return this->m_readHint != this->m_remainingReads.cend() && this->m_readHint->first == targetAddress;
+	}
+#endif
+
 //WAS LOCKED
 void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
 	uint8_t const * const finalAddress = initialAddress + accessSize;
@@ -712,7 +743,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAdd
 
 	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
 	
-	this->m_readHint = this->ReverseFaultyRead(initialAddress, finalAddress);
+	this->m_readHint = this->ReverseFaultyRead(initialAddress, finalAddress IF_COMMA_LSBDROPPED(false));
 
 	this->ApplyFaultyWrite(initialAddress, finalAddress);
 
@@ -720,13 +751,42 @@ void ShortTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAdd
 		this->ApplyPassiveFault(initialAddress, finalAddress);
 	#endif
 
-	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {		
+	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {	
 		#if !DISTANCE_BASED_FAULT_INJECTOR
-			for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
-				this->m_faultInjector.InjectFault(currentAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
-			}
+			#if LSB_DROPPING
+			 	if (this->m_faultInjector.HasLSBDropping()) {
+					this->m_readHint = this->m_remainingReads.lower_bound(initialAddress); //maybe faster than just decreasing the readHint
+
+					for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
+						const bool isBackedUp = this->IsBackedUp(currentAddress);
+						
+						//updated in InjectFault -> BackupReadData
+						this->m_readHint->second.first = !this->m_faultInjector.InjectFault(currentAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), (!isBackedUp ? this : nullptr) IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+					}
+			 	} else {
+					if (this->m_readHint != this->m_remainingReads.cbegin()) {
+						this->m_readHint--;
+					}
+
+					for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
+						this->m_faultInjector.InjectFault(currentAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+					}
+				}
+			#else
+				if (this->m_readHint != this->m_remainingReads.cbegin()) {
+					this->m_readHint--;
+				}
+
+				for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
+					this->m_faultInjector.InjectFault(currentAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+				}
+			#endif
 		#else
-			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			if (this->m_readHint != this->m_remainingReads.cbegin()) {	
+				this->m_readHint--;
+			}
+
+			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		#endif
 	}
 
@@ -753,7 +813,7 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementSafe(uint8_t * con
 void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
 	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes);
 
-	this->m_readHint = this->ReverseFaultyRead(accessedAddress);
+	this->m_readHint = this->ReverseFaultyRead(accessedAddress IF_COMMA_LSBDROPPED(false));
 
 	this->ApplyFaultyWrite(accessedAddress);
 
@@ -761,11 +821,25 @@ void ShortTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 		this->ApplyPassiveFault(accessedAddress);
 	#endif
 
-	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {		
+	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {
+		if (this->m_readHint != this->m_remainingReads.cbegin()) {	
+			this->m_readHint--;
+		}	
 		#if !DISTANCE_BASED_FAULT_INJECTOR
-			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			#if LSB_DROPPING
+				if (this->m_faultInjector.HasLSBDropping()) {
+					const bool isBackedUp = this->IsBackedUp(accessedAddress);
+					
+					//updated in InjectFault -> BackupReadData
+					this->m_readHint->second.first = !this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), (!isBackedUp ? this : nullptr) IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+				} else {
+					this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+				}
+			#else
+				this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			#endif
 		#else
-			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		#endif
 	}
 }
@@ -878,7 +952,7 @@ bool LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 		if (this->m_isActive == 0) { //failsafe against repeated retirements
 			uint8_t* address = this->m_initialAddress;
 			for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
-				this->ProcessReadMemoryElement(elementIndex, address, false);
+				this->ProcessReadMemoryElement(elementIndex, address, false); //reverseLSBDrop = true
 			}		
 
 			#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR //otherwise, applied by the loop above
@@ -933,8 +1007,9 @@ uint8_t* LongTermApproximateBuffer::GetBackupAddressFromIndex(const size_t index
 	return &(this->m_readBackups[index * this->m_minimumReadBackupSize]);
 }
 
-//MUST LOCK
+//MUST LOCK, remember to change error status later
 void LongTermApproximateBuffer::ReverseFaultyRead(const size_t elementIndex, uint8_t* const accessedAddress) {
+	// LSBDropped: status chacked beforehand 
 	std::copy_n(this->GetBackupAddressFromIndex(elementIndex), this->m_minimumReadBackupSize, accessedAddress);
 }
 
@@ -970,20 +1045,20 @@ void LongTermApproximateBuffer::ApplyWriteFault(const size_t elementIndex, uint8
 		#endif
 	#else
 		#if !DISTANCE_BASED_FAULT_INJECTOR
-			this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr AND_LOG_ARGUMENT(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
+			this->m_faultInjector.InjectFault(accessedAddress, ber, nullptr IF_COMMA_LOGGING_FAULTS(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
 		#else
 			//USING THE DISTANCE_BASED_FAULT_INJECTOR THE ERRORS ARE INSERTED EVERY NEXTPERIOD() OR RETIREBUFFER()
-			this->m_faultInjector.InjectFault(accessedAddress, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr AND_LOG_ARGUMENT(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
+			this->m_faultInjector.InjectFault(accessedAddress, *ber, static_cast<ssize_t>(this->m_dataSizeInBytes), nullptr IF_COMMA_LOGGING_FAULTS(this->m_writeSupportRecords[elementIndex].writeErrorsCountByBit));
 		#endif
 	#endif
 }
 
 //MUST LOCK
-void LongTermApproximateBuffer::BackupReadData(uint8_t* const data) {
+void LongTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop/*= false*/)) {
 	const size_t elementIndex = this->GetIndexFromAddress(data);
 	uint8_t* const backupAddress = this->GetBackupAddressFromIndex(elementIndex);
 	std::copy_n(data, this->m_minimumReadBackupSize, backupAddress);
-	this->m_records[elementIndex].errorStatus = ErrorStatus::Read;
+	this->m_records[elementIndex].errorStatus = isLSBDrop ? ErrorStatus::LSBDrop : ErrorStatus::Read;
 }
 
 //MUST LOCK
@@ -1002,17 +1077,39 @@ void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t element
 }
 
 //MUST LOCK
-void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject) {
+void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*=true*/)) {
 	uint8_t& currentErrorStatus = this->m_records[elementIndex].errorStatus;
 
-	if (currentErrorStatus != ErrorStatus::None) {
-		if (currentErrorStatus == ErrorStatus::Read) {
+	switch (currentErrorStatus)	{
+		case ErrorStatus::Read:
 			this->ReverseFaultyRead(elementIndex, accessedAddress);
+			currentErrorStatus = ErrorStatus::None;
+			break;
+		case ErrorStatus::Write:
+			this->ApplyWriteFault(elementIndex, accessedAddress);
+			currentErrorStatus = ErrorStatus::None;
+			break;
+		#if LSB_DROPPING
+		case ErrorStatus::LSBDrop:
+			if (reverseLSBDrop) {
+				this->ReverseFaultyRead(elementIndex, accessedAddress);
+				currentErrorStatus = ErrorStatus::None;
+			}
+			break;
+		#endif
+		default:
+			break;
+	}
+
+	/*if (currentErrorStatus) {
+		if ((currentErrorStatus & ErrorStatus::Read)) {
+			this->ReverseFaultyRead(elementIndex, accessedAddress);
+			currentErrorStatus = ErrorStatus::None;
 		} else {
 			this->ApplyWriteFault(elementIndex, accessedAddress);
+			currentErrorStatus = ErrorStatus::None;
 		}
-		currentErrorStatus = ErrorStatus::None;
-	}
+	}*/
 
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->ApplyPassiveFault(elementIndex, accessedAddress);
@@ -1020,7 +1117,17 @@ void LongTermApproximateBuffer::ProcessReadMemoryElement(const size_t elementInd
 
 	#if !DISTANCE_BASED_FAULT_INJECTOR //outside of the function to avoid constant rechecking during SIMD or Scattered, must be added
 		if (shouldInject) {
-			this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			#if LSB_DROPPING
+				if (this->m_faultInjector.HasLSBDropping()) {
+					const bool isBackedUp = currentErrorStatus == ErrorStatus::LSBDrop;
+
+					this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), (!isBackedUp ? this : nullptr) IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read))); 
+				} else {
+					this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+				}
+			#else
+				this->m_faultInjector.InjectFault(accessedAddress, this->m_faultInjector.GetBer(ErrorCategory::Read), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			#endif
 		}
 	#endif
 }
@@ -1109,7 +1216,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddr
 
 	#if DISTANCE_BASED_FAULT_INJECTOR //outside of the loop to avoid constant rechecking
 		if (shouldInject) {
-			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
 	#endif
 
@@ -1142,7 +1249,7 @@ void LongTermApproximateBuffer::HandleMemoryReadSingleElementUnsafe(uint8_t * co
 
 	#if DISTANCE_BASED_FAULT_INJECTOR
 		if (shouldInject) {
-			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+			this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
 	#endif
 }
@@ -1163,7 +1270,7 @@ void LongTermApproximateBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND
 
 		#if DISTANCE_BASED_FAULT_INJECTOR //has to be here due to non-contiguos access
 			if (shouldInject) {
-				this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this AND_LOG_ARGUMENT(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
+				this->m_faultInjector.InjectFault(accessedAddress, ErrorCategory::Read, static_cast<ssize_t>(this->m_dataSizeInBytes), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 			}
 		#endif
 	}

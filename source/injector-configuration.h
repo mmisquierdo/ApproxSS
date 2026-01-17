@@ -44,7 +44,7 @@ class InjectionConfigurationBase {
 		int64_t m_configurationId;
 		size_t m_bitDepth;
 
-		#if LS_BIT_DROPPING
+		#if LSB_DROPPING
 			size_t m_LSBDropped;
 		#endif
 
@@ -59,7 +59,7 @@ class InjectionConfigurationBase {
 		int64_t GetConfigurationId() const;
 		size_t GetBitDepth() const;
 
-		#if LS_BIT_DROPPING
+		#if LSB_DROPPING
 			size_t GetLSBDropped() const;
 			void SetLSBDropped(const size_t lsbDropped);
 			bool HasLSBDropping() const;
