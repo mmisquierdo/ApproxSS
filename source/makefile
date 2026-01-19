@@ -1,4 +1,4 @@
-PIN_ROOT :=  ../../pin4.0
+PIN_ROOT :=  ../../pin4.1
 
 CONFIG_ROOT := $(PIN_ROOT)/source/tools/Config
 
