@@ -416,7 +416,7 @@ void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::arra
 ShortTermApproximateBuffer::ShortTermApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
 													const InjectionConfigurationReference& injectorCfg) : 
 													ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg),
-													m_pendingWrites(), m_remainingReads(), m_readHint(m_remainingReads.cbegin())
+													m_pendingWrites(), m_remainingReads(), m_readHint(IF_LSBDROPPED_ELSE(m_remainingReads.begin(), m_remainingReads.cbegin()))
 													{}
 
 //WAS LOCKED (INDIRECTLY)
@@ -589,7 +589,7 @@ void ShortTermApproximateBuffer::RecordFaultyWrite(uint8_t* const address, Pendi
 }
 
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(const RemainingReads::const_iterator it IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
+RemainingReadsIterator ShortTermApproximateBuffer::ReverseFaultyRead(const RemainingReadsIterator it IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
 	#if LSB_DROPPING
 		if (it->second.first && !reverseLSBDrop) { //if just LSBDropping...
 			return std::next(it);
@@ -607,8 +607,8 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(con
 
 
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const accessedAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
-	RemainingReads::const_iterator it = this->m_remainingReads.find(accessedAddress);
+RemainingReadsIterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const accessedAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
+	RemainingReadsIterator it = this->m_remainingReads.find(accessedAddress);
 	if (it != this->m_remainingReads.cend()) {
 		it = this->ReverseFaultyRead(it IF_COMMA_LSBDROPPED(reverseLSBDrop));
 	}
@@ -616,8 +616,8 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uin
 }
 
 //MUST LOCK
-RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
-	RemainingReads::const_iterator lowerIt = this->m_remainingReads.lower_bound(initialAddress); 
+RemainingReadsIterator ShortTermApproximateBuffer::ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop/*= true*/)) {
+	RemainingReadsIterator lowerIt = this->m_remainingReads.lower_bound(initialAddress); 
 	while (lowerIt != this->m_remainingReads.cend() && lowerIt->first < finalAddress) {
 		lowerIt = this->ReverseFaultyRead(lowerIt IF_COMMA_LSBDROPPED(reverseLSBDrop));
 	}
@@ -626,7 +626,7 @@ RemainingReads::const_iterator ShortTermApproximateBuffer::ReverseFaultyRead(uin
 
 //MUST LOCK
 void ShortTermApproximateBuffer::ReverseAllReadErrors() {
-	for (RemainingReads::const_iterator it = this->m_remainingReads.cbegin(); it != this->m_remainingReads.cend(); /**/) {
+	for (RemainingReadsIterator it = IF_LSBDROPPED_ELSE(this->m_remainingReads.begin(), this->m_remainingReads.cbegin()); it != this->m_remainingReads.cend(); /**/) {
 		it = this->ReverseFaultyRead(it); //reverseLSBDrop = true
 	}
 }

@@ -195,11 +195,11 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 	protected: 
 		PendingWrites m_pendingWrites;
 		RemainingReads m_remainingReads;
-		//#if LSB_DROPPING
-			//RemainingReads::iterator m_readHint;
-		//#else
-			RemainingReads::iterator m_readHint;
-		//#endif
+	
+		// not proud of this
+		#define RemainingReadsIterator IF_LSBDROPPED_ELSE(RemainingReads::iterator, RemainingReads::const_iterator)
+
+		RemainingReadsIterator m_readHint;
 
 		PendingWrites::const_iterator ApplyFaultyWrite(const PendingWrites::const_iterator it);
 		void ApplyFaultyWrite(uint8_t * const accessedAddress);
@@ -207,9 +207,9 @@ class ShortTermApproximateBuffer : virtual public ApproximateBuffer {
 		void ApplyAllWriteErrors();
 		void RecordFaultyWrite(uint8_t* const address, PendingWrites::const_iterator& hint);
 
-		RemainingReads::const_iterator ReverseFaultyRead(const RemainingReads::const_iterator it 							IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
-		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const accessedAddess 									IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
-		RemainingReads::const_iterator ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
+		RemainingReadsIterator ReverseFaultyRead(const RemainingReadsIterator it 									IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
+		RemainingReadsIterator ReverseFaultyRead(uint8_t * const accessedAddess 									IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
+		RemainingReadsIterator ReverseFaultyRead(uint8_t * const initialAddress, uint8_t const * const finalAddress IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
 		void ReverseAllReadErrors();
 
 		RemainingReads::const_iterator InvalidateRemainingRead(const RemainingReads::const_iterator it);
