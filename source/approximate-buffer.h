@@ -109,6 +109,7 @@ class ApproximateBuffer : public Range {
 		bool GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const;
 
 		size_t GetIndexFromAddress(uint8_t const * const address) const;
+		uint8_t* GetAddressFromIndex(const size_t elementIndex) const;
 		size_t GetImplementationBufferSizeInBits() const;
 		size_t GetNumberOfElements() const;
 		size_t GetTotalNecessaryReadBackupSize() const;
@@ -316,6 +317,9 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 			std::unique_ptr<WriteSupportRecord[]> m_writeSupportRecords;
 		#endif
+
+		size_t m_highestInjectedElement;
+		size_t m_lowestInjectedElement;
 
 		uint8_t* GetBackupAddressFromIndex(const size_t index) const;
 

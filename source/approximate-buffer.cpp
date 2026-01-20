@@ -205,6 +205,10 @@ size_t ApproximateBuffer::GetIndexFromAddress(uint8_t const * const address) con
 	return ((size_t) (address - this->m_initialAddress)) / this->m_dataSizeInBytes; //static_cast<size_t>
 }
 
+uint8_t* ApproximateBuffer::GetAddressFromIndex(const size_t elementIndex) const {
+	return this->m_initialAddress + (elementIndex * this->m_dataSizeInBytes);
+}
+
 size_t ApproximateBuffer::GetAlignmentOffset(uint8_t const * const address) const {
 	return static_cast<size_t>(address - this->m_initialAddress) % this->m_dataSizeInBytes;
 }
@@ -878,6 +882,9 @@ LongTermApproximateBuffer::~LongTermApproximateBuffer() {
 
 //MUST LOCK
 void LongTermApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
+	this->m_lowestInjectedElement = this->GetIndexFromAddress(this->m_finalAddress); // should generate a valid (non-crashing) element
+	this->m_highestInjectedElement = this->GetIndexFromAddress(this->m_initialAddress);
+
 	using namespace BorrowedMemory;
 
 	const InjectionRecordPool::iterator recordIt = g_injectionRecords.find(this->GetNumberOfElements());
@@ -950,8 +957,8 @@ bool LongTermApproximateBuffer::RetireBuffer(const bool giveAwayRecords) {
 		this->m_isActive--;
 
 		if (this->m_isActive == 0) { //failsafe against repeated retirements
-			uint8_t* address = this->m_initialAddress;
-			for (size_t elementIndex = 0; elementIndex < this->GetNumberOfElements(); ++elementIndex, address += this->m_dataSizeInBytes) {
+			uint8_t* address = this->GetAddressFromIndex(this->m_lowestInjectedElement);
+			for (size_t elementIndex = this->m_lowestInjectedElement; elementIndex <= this->m_highestInjectedElement; ++elementIndex, address += this->m_dataSizeInBytes) {
 				this->ProcessReadMemoryElement(elementIndex, address, false); //reverseLSBDrop = true
 			}		
 
@@ -1058,6 +1065,10 @@ void LongTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSBD
 	const size_t elementIndex = this->GetIndexFromAddress(data);
 	uint8_t* const backupAddress = this->GetBackupAddressFromIndex(elementIndex);
 	std::copy_n(data, this->m_minimumReadBackupSize, backupAddress);
+
+	this->m_lowestInjectedElement = std::min(this->m_lowestInjectedElement, elementIndex);
+	this->m_highestInjectedElement = std::max(this->m_highestInjectedElement, elementIndex);
+
 	#if LSB_DROPPING
 		this->m_records[elementIndex].errorStatus = isLSBDrop ? ErrorStatus::LSBDrop : ErrorStatus::Read;
 	#else
@@ -1065,9 +1076,13 @@ void LongTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSBD
 	#endif
 }
 
-//MUST LOCK
+//MUST LOCK, UPDATE LOWEST AND HIGHEST INJECTED ELEMENTS
 void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject) {
 	this->m_records[elementIndex].errorStatus = newStatus;
+
+	// DO THIS OUTSIDE THE LOOP
+	//this->m_lowestInjectedElement = std::min(this->m_lowestInjectedElement, elementIndex);
+	//this->m_highestInjectedElement = std::max(this->m_highestInjectedElement, elementIndex);
 
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->UpdateLastAccessPeriod(elementIndex);
@@ -1149,6 +1164,11 @@ void LongTermApproximateBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAdd
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
+	if (shouldInject) {
+		this->m_lowestInjectedElement = std::min(this->m_lowestInjectedElement, firstElementIndex);
+		this->m_highestInjectedElement = std::max(this->m_highestInjectedElement, endElementIndex-1);
+	}
+
 	for (size_t elementIndex = firstElementIndex; elementIndex < endElementIndex; ++elementIndex) {
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 	}
@@ -1180,6 +1200,11 @@ void LongTermApproximateBuffer::HandleMemoryWriteSingleElementUnsafe(uint8_t * c
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
+	if (shouldInject) {
+		this->m_lowestInjectedElement = std::min(this->m_lowestInjectedElement, elementIndex);
+		this->m_highestInjectedElement = std::max(this->m_highestInjectedElement, elementIndex);
+	}
+
 	this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 }
 
@@ -1191,6 +1216,11 @@ void LongTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAN
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
+	
+	if (shouldInject) {
+		this->m_lowestInjectedElement = std::min(this->m_lowestInjectedElement, this->GetIndexFromAddress((uint8_t*) memOpInfo->ElementAddress(0)));
+		this->m_highestInjectedElement = std::max(this->m_highestInjectedElement, this->GetIndexFromAddress((uint8_t*) memOpInfo->ElementAddress(memOpInfo->NumOfElements()-1))); // assuming they're ordered
+	}
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
 		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);
