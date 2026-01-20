@@ -989,7 +989,7 @@ void LongTermApproximateBuffer::ReactivateBuffer(const uint64_t period) {
 }
 
 //MUST LOCK
-void LongTermApproximateBuffer::RecordFaultyWrite(const size_t elementIndex) {
+void LongTermApproximateBuffer::RecordFaultyWriteSupport(const size_t elementIndex) {
 	#if MULTIPLE_BER_CONFIGURATION
 		#if !DISTANCE_BASED_FAULT_INJECTOR
 			this->m_writeSupportRecords[elementIndex].writeSupport = this->m_faultInjector.GetBer(ErrorCategory::Write);
@@ -1058,7 +1058,11 @@ void LongTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSBD
 	const size_t elementIndex = this->GetIndexFromAddress(data);
 	uint8_t* const backupAddress = this->GetBackupAddressFromIndex(elementIndex);
 	std::copy_n(data, this->m_minimumReadBackupSize, backupAddress);
-	this->m_records[elementIndex].errorStatus = isLSBDrop ? ErrorStatus::LSBDrop : ErrorStatus::Read;
+	#if LSB_DROPPING
+		this->m_records[elementIndex].errorStatus = isLSBDrop ? ErrorStatus::LSBDrop : ErrorStatus::Read;
+	#else
+		this->m_records[elementIndex].errorStatus = ErrorStatus::Read;
+	#endif
 }
 
 //MUST LOCK
@@ -1071,7 +1075,7 @@ void LongTermApproximateBuffer::ProcessWrittenMemoryElement(const size_t element
 
 	#if MULTIPLE_BER_CONFIGURATION || LOG_FAULTS
 		if (shouldInject) {
-			this->RecordFaultyWrite(elementIndex);
+			this->RecordFaultyWriteSupport(elementIndex);
 		}
 	#endif
 }

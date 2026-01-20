@@ -326,7 +326,7 @@ class LongTermApproximateBuffer : virtual public ApproximateBuffer {
 		void ApplyWriteFault(const size_t elementIndex, uint8_t* const accessedAddress);
 		void ReverseFaultyRead(const size_t elementIndex, uint8_t* const accessedAddress);
 
-		void RecordFaultyWrite(const size_t elementIndex);
+		void RecordFaultyWriteSupport(const size_t elementIndex);
 
 		auto GetWriteBer(const size_t elementIndex);
 
