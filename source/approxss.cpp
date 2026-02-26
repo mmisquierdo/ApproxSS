@@ -848,7 +848,7 @@ namespace PintoolOutput {
 	std::string GenerateTimeDependentFileName(const std::string& suffix) {
 		const std::time_t currentTime = std::time(nullptr);
 		std::stringstream outputFilenameStream;
-		outputFilenameStream << "injectionPintoolOutputLog_" << std::put_time(std::localtime(&currentTime), "%Y:%m:%d:%H:%M:%S") << '_' << suffix;
+		outputFilenameStream << "ApproxSSOutputLog_" << std::put_time(std::localtime(&currentTime), "%Y:%m:%d:%H:%M:%S") << ':' << getpid() << '_' << suffix;
 		return outputFilenameStream.str();
 	}
 
