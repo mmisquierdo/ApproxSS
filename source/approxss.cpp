@@ -855,6 +855,10 @@ namespace PintoolOutput {
 	void CreateOutputLog(std::ofstream& outputFile, std::string outputFilename, const std::string& suffix) {
 		if (outputFilename.empty()) {
 			outputFilename = PintoolOutput::GenerateTimeDependentFileName(suffix);
+		} else {
+			if (outputFilename.back() == '/') {
+				outputFilename += PintoolOutput::GenerateTimeDependentFileName(suffix);
+			}
 		}
 		
 		outputFile.open(outputFilename, std::ofstream::trunc);
