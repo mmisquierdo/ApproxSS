@@ -732,7 +732,7 @@ void ShortTermApproximateBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERA
 
 #if LSB_DROPPING
 	bool ShortTermApproximateBuffer::IsBackedUp(uint8_t const * const targetAddress) {
-		while (this->m_readHint != this->m_remainingReads.cend() && this->m_readHint->first <= targetAddress) {
+		while (this->m_readHint != this->m_remainingReads.cend() && this->m_readHint->first < targetAddress) {
 			this->m_readHint++;
 		}
 		
