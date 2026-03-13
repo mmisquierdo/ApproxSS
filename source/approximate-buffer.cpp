@@ -463,7 +463,8 @@ void ShortTermApproximateBuffer::BackupReadData(uint8_t* const data IF_COMMA_LSB
 	#if LSB_DROPPING
 		uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
 		std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
-		this->m_readHint = this->m_remainingReads.insert(this->m_readHint, {data, {isLSBDrop, readBackup}});
+		auto entry = std::make_pair(isLSBDrop, std::move(std::unique_ptr<uint8_t[]>(readBackup)));
+		this->m_readHint = this->m_remainingReads.insert(this->m_readHint, {data, std::move(entry)});
 	#else
 		uint8_t * const readBackup = new uint8_t[this->m_minimumReadBackupSize];
 		std::copy_n(data, this->m_minimumReadBackupSize, readBackup);
@@ -598,8 +599,8 @@ RemainingReadsIterator ShortTermApproximateBuffer::ReverseFaultyRead(const Remai
 		if (it->second.first && !reverseLSBDrop) { //if just LSBDropping...
 			return std::next(it);
 		} else {
-			std::copy_n(it->second.second, this->m_minimumReadBackupSize, it->first);
-			delete[] it->second.second;
+			std::copy_n(it->second.second.get(), this->m_minimumReadBackupSize, it->first);
+			//delete[] it->second.second; //unique_ptr now, no need to delete
 			return this->m_remainingReads.erase(it);
 		}
 	#else
@@ -638,7 +639,7 @@ void ShortTermApproximateBuffer::ReverseAllReadErrors() {
 //MUST LOCK
 RemainingReads::const_iterator ShortTermApproximateBuffer::InvalidateRemainingRead(const RemainingReads::const_iterator it) {
 	#if LSB_DROPPING
-		delete[] it->second.second;
+		//delete[] it->second.second;
 	#else
 		delete[] it->second;
 	#endif

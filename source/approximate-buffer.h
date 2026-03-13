@@ -157,7 +157,7 @@ class ApproximateBuffer : public Range {
 /* ==================================================================== */
 
 #if LSB_DROPPING
-typedef std::map<uint8_t* const, std::pair<bool, uint8_t*>> RemainingReads; // bool is LSB_DROPPING
+typedef std::map<uint8_t* const, std::pair<bool, std::unique_ptr<uint8_t[]>>> RemainingReads; // bool is LSB_DROPPING
 #else
 typedef std::map<uint8_t* const, uint8_t*> RemainingReads;
 #endif
