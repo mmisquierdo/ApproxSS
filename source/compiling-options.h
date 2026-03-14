@@ -18,11 +18,11 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef LONG_TERM_BUFFER
-	#define LONG_TERM_BUFFER false
+	#define LONG_TERM_BUFFER true
 #endif
 
 #ifndef SHORT_TERM_BUFFER
-	#define SHORT_TERM_BUFFER (!LONG_TERM_BUFFER && true)
+	#define SHORT_TERM_BUFFER (!LONG_TERM_BUFFER && false)
 #endif
 
 #ifndef MULTIPLE_ACTIVE_BUFFERS
@@ -59,6 +59,10 @@ constexpr size_t BYTE_SIZE = 8;
 
 #ifndef CAUTIOUS_LASTACCESSPERIOD_TAKEOVER
 	#define CAUTIOUS_LASTACCESSPERIOD_TAKEOVER false
+#endif
+
+#ifndef MULTIGEN
+	#define MULTIGEN true
 #endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

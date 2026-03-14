@@ -25,7 +25,9 @@ class FaultInjector : public InjectionConfigurationLocal {
 		static constexpr uint8_t bitMask = 0b01;
 		static constexpr uint8_t bitDroppingMask = std::numeric_limits<uint8_t>::max();
 	public:
-		static std::default_random_engine generator;
+		static constexpr uint64_t genSize = MULTIGEN ? 8 : 1;
+
+		static std::array<std::default_random_engine, genSize> generator;
 
 		FaultInjector(const InjectionConfigurationReference& injectorCfg);
 

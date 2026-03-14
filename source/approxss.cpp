@@ -1024,8 +1024,17 @@ int main(const int argc, char* argv[]) {
 
 	// Etc
 	srand((unsigned)getpid() * (unsigned)time(0));
+
 	if (!RNGSeed.Value().empty()) {
-		FaultInjector::generator = std::default_random_engine{static_cast<unsigned int>(std::stoul(RNGSeed.Value()))};
+		FaultInjector::generator[0] = std::default_random_engine{static_cast<unsigned int>(std::stoul(RNGSeed.Value()))};
+	} else {
+		FaultInjector::generator[0] = std::default_random_engine{static_cast<unsigned int>(std::random_device{}())};
+	}
+
+	std::uniform_int_distribution<unsigned int> dist(std::numeric_limits<unsigned int>::min(), std::numeric_limits<unsigned int>::max());
+
+	for (size_t i = 1; i < FaultInjector::genSize; ++i) {
+		FaultInjector::generator[i] = std::default_random_engine{dist(FaultInjector::generator[0])};
 	}
 
 	PintoolOutput::PrintPintoolConfiguration();
