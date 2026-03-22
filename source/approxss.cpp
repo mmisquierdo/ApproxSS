@@ -904,6 +904,12 @@ namespace PintoolOutput {
 			const AccessCounter& accessLayer = layerInfo.first;
 			const std::vector<int64_t>& layerLevels = layerInfo.second;
 
+			const bool all_zeros = std::all_of(std::begin(accessLayer), std::end(accessLayer), [](const int i){ return i == 0;});
+
+			if (all_zeros) {
+				continue;
+			}
+
 			outputLog << '\t' << StringifyLevels(layerLevels) << ": " << accessLayer[AccessTypes::Read] << " / " << accessLayer[AccessTypes::Write] << std::endl;
 
 			for (size_t i = 0; i < accessLayer.size(); ++i) {
