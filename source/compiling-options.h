@@ -65,6 +65,16 @@ constexpr size_t BYTE_SIZE = 8;
 	#define MULTIGEN true
 #endif
 
+#ifndef BUFFERS_LAYERED_COUNTER
+	#define BUFFERS_LAYERED_COUNTER true
+#endif
+
+#if BUFFERS_LAYERED_COUNTER
+	#define IF_COMMA_BUFFER_LAYERED(X) ,X
+#else
+	#define IF_COMMA_BUFFER_LAYERED(X)
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LSB_DROPPING //NOTE: BITS DROPPED ON WRITES ARE IRREVERSIBLE, EVEN AFTER REMOVAL, AS OTHER WRITE ERRORS

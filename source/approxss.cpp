@@ -26,7 +26,7 @@ std::stack<int64_t> g_layerHashes;
 
 typedef std::array<uint64_t, AccessTypes::Size> AccessCounter;
 
-typedef std::map<int64_t, std::pair<AccessCounter, std::vector<int64_t>>> LayeredAccess; //<hash, <counter, layers>>
+typedef std::map<int64_t, std::pair<AccessCounter, std::vector<int64_t>>> LayeredAccess; //<hash, <counter, layer list>>
 
 int64_t HashValue(const int64_t value, const int64_t previous = 0) {
 	return previous ^ (value + 0x9E3779B97F4A7C15 + (previous << 6) + (previous >> 2));
@@ -57,8 +57,12 @@ std::string StringifyLevels(const std::vector<int64_t>& layers) {
 }
 
 LayeredAccess g_layeredAccesses;
+AccessCounter g_accessCounter{0};
 
-AccessCounter g_accessCounter;
+#if BUFFERS_LAYERED_COUNTER
+	LayeredAccess g_buffersLayeredAccesses;
+	AccessCounter g_buffersAccessCounter;
+#endif
 
 void StoreAccessLayer(LayeredAccess& layeredAccess, AccessCounter& accessCounter, const std::vector<int64_t>& levels, const int64_t sequenceHash) {
 	const LayeredAccess::iterator lbLayeredAccess = layeredAccess.lower_bound(sequenceHash);
@@ -256,6 +260,9 @@ namespace PintoolControl {
 		tdata.m_level++;
 
 		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+		#if BUFFERS_LAYERED_COUNTER
+			StoreAccessLayer(g_buffersLayeredAccesses, g_buffersAccessCounter, g_levels, g_sequenceHash);
+		#endif
 
 		g_layerHashes.push(g_sequenceHash);
 		g_levels.push_back(level);
@@ -273,6 +280,9 @@ namespace PintoolControl {
 		tdata.m_level--;
 
 		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+		#if BUFFERS_LAYERED_COUNTER
+			StoreAccessLayer(g_buffersLayeredAccesses, g_buffersAccessCounter, g_levels, g_sequenceHash);
+		#endif
 
 		g_sequenceHash = g_layerHashes.top();
 		g_layerHashes.pop();
@@ -488,7 +498,7 @@ namespace AccessHandler {
 		}
 	#endif
 
-	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
+	VOID CheckAndForward(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(uint8_t* const, const UINT32, const bool IF_COMMA_PIN_LOCKED(const bool)), uint8_t* const accessedAddress, const UINT32 accessSizeInBytes IF_COMMA_BUFFER_LAYERED(const size_t accessType)) {
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -509,12 +519,20 @@ namespace AccessHandler {
 				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
 				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
 				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+			
+				#if BUFFERS_LAYERED_COUNTER
+					g_buffersAccessCounter[accessType] += accessSizeInBytes;
+				#endif
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
 				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
 				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
 				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+			
+				#if BUFFERS_LAYERED_COUNTER
+					g_buffersAccessCounter[accessType] += accessSizeInBytes;
+				#endif
 			}
 		#endif
 
@@ -524,26 +542,26 @@ namespace AccessHandler {
 	// memory read
 	VOID HandleMemoryReadSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		g_accessCounter[AccessTypes::Read] += accessSizeInBytes;
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes);
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSIMD, accessedAddress, accessSizeInBytes IF_COMMA_BUFFER_LAYERED(AccessTypes::Read));
 	}
 
 	VOID HandleMemoryRead(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {	
 		g_accessCounter[AccessTypes::Read] += accessSizeInBytes;	
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes);
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadSingleElementSafe, accessedAddress, accessSizeInBytes IF_COMMA_BUFFER_LAYERED(AccessTypes::Read));
 	}
 
 	// memory write
 	VOID HandleMemoryWriteSIMD(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		g_accessCounter[AccessTypes::Write] += accessSizeInBytes;
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes);
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSIMD, accessedAddress, accessSizeInBytes IF_COMMA_BUFFER_LAYERED(AccessTypes::Write));
 	}
 
 	VOID HandleMemoryWrite(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t* const accessedAddress, const UINT32 accessSizeInBytes) {
 		g_accessCounter[AccessTypes::Write] += accessSizeInBytes;
-		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes);
+		CheckAndForward(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteSingleElementSafe, accessedAddress, accessSizeInBytes IF_COMMA_BUFFER_LAYERED(AccessTypes::Write));
 	}
 
-	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool IF_COMMA_PIN_LOCKED(const bool)), IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
+	VOID CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) void (ChosenTermApproximateBuffer::*function)(IMULTI_ELEMENT_OPERAND const * const, const bool IF_COMMA_PIN_LOCKED(const bool)), IMULTI_ELEMENT_OPERAND const * const memOpInfo IF_COMMA_BUFFER_LAYERED(const size_t accessType)) {
 		#if PIN_LOCKED
 			if (!PintoolControl::g_mainThreadControl.HasActiveBuffer())	{
 				return;
@@ -558,7 +576,7 @@ namespace AccessHandler {
 		ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
 
 		#if MULTIPLE_ACTIVE_BUFFERS || PIN_LOCKED
-			const Range range = Range(accessedAddress, accessedAddress);
+			const Range range = Range(accessedAddress, accessedAddress); // MAKING ASSUMPTION THAT ALL THE ACCESS ARE CONTAINED IN THE BUFFER
 		#endif
 		
 		IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
@@ -571,6 +589,10 @@ namespace AccessHandler {
 				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
 
 				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+			
+				#if BUFFERS_LAYERED_COUNTER
+					g_buffersAccessCounter[accessType] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
+				#endif
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
@@ -579,6 +601,10 @@ namespace AccessHandler {
 				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
 
 				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+			
+				#if BUFFERS_LAYERED_COUNTER
+					g_buffersAccessCounter[accessType] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
+				#endif
 			}
 		#endif
 
@@ -587,12 +613,12 @@ namespace AccessHandler {
 
 	VOID HandleMemoryReadScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
 		g_accessCounter[AccessTypes::Read] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
-		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo);
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryReadScattered, memOpInfo IF_COMMA_BUFFER_LAYERED(AccessTypes::Read));
 	}
 
 	VOID HandleMemoryWriteScattered(IF_PIN_LOCKED_COMMA(const THREADID threadId) IMULTI_ELEMENT_OPERAND const * const memOpInfo) {
 		g_accessCounter[AccessTypes::Write] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
-		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo);
+		CheckAndForwardScattered(IF_PIN_LOCKED_COMMA(threadId) &ChosenTermApproximateBuffer::HandleMemoryWriteScattered, memOpInfo IF_COMMA_BUFFER_LAYERED(AccessTypes::Write));
 	}
 }
 
@@ -869,6 +895,24 @@ namespace PintoolOutput {
 		}
 	}
 
+	VOID WriteDownLayeredAccesses(std::ofstream& outputLog, const LayeredAccess& layeredAccess, const std::string& header) {
+		outputLog << '\n' << header << std::endl;
+		outputLog << "Software Implementation Read/Written Bytes By Level: " << std::endl;
+		AccessCounter totalCounter{0};
+		totalCounter.fill(0);
+		for (const auto& [hash, layerInfo] : layeredAccess) {
+			const AccessCounter& accessLayer = layerInfo.first;
+			const std::vector<int64_t>& layerLevels = layerInfo.second;
+
+			outputLog << '\t' << StringifyLevels(layerLevels) << ": " << accessLayer[AccessTypes::Read] << " / " << accessLayer[AccessTypes::Write] << std::endl;
+
+			for (size_t i = 0; i < accessLayer.size(); ++i) {
+				totalCounter[i] += accessLayer[i];
+			}
+		}
+		outputLog << "Total Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
+	}
+
 	VOID WriteAccessLog() {
 		PintoolOutput::accessLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
 		
@@ -908,22 +952,12 @@ namespace PintoolOutput {
 			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
 
-		PintoolOutput::accessLog << "\nOVERALL APPLICATION" << std::endl;
-		PintoolOutput::accessLog << "Software Implementation Read/Written Bytes By Level: " << std::endl;
-		AccessCounter totalCounter;
-		totalCounter.fill(0);
-		for (const auto& [hash, layerInfo] : g_layeredAccesses) {
-			const AccessCounter& layeredAccess = layerInfo.first;
-			const std::vector<int64_t>& layerLevels = layerInfo.second;
+		WriteDownLayeredAccesses(PintoolOutput::accessLog, g_layeredAccesses, "OVERALL APPLICATION LAYERED ACCESS");
 
-			PintoolOutput::accessLog << '\t' << StringifyLevels(layerLevels) << ": " << layeredAccess[AccessTypes::Read] << " / " << layeredAccess[AccessTypes::Write] << std::endl;
+		#if BUFFERS_LAYERED_COUNTER
+			WriteDownLayeredAccesses(PintoolOutput::accessLog, g_buffersLayeredAccesses, "INSTRUMENTED BUFFERS LAYERED ACCESS");
+		#endif
 
-			for (size_t i = 0; i < layeredAccess.size(); ++i) {
-				totalCounter[i] += layeredAccess[i];
-			}
-		}
-		PintoolOutput::accessLog << "Total Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
-		
 		PintoolOutput::accessLog.close();
 	}
 
@@ -957,6 +991,9 @@ namespace PintoolOutput {
 
 	VOID Fini(const INT32 code, VOID* v) {
 		StoreAccessLayer(g_layeredAccesses, g_accessCounter, g_levels, g_sequenceHash);
+		#if BUFFERS_LAYERED_COUNTER
+			StoreAccessLayer(g_buffersLayeredAccesses, g_buffersAccessCounter, g_levels, g_sequenceHash);
+		#endif
 		g_levels.pop_back();
 
 		std::cout << "\nFinal Level: " << PintoolControl::g_mainThreadControl.m_level << std::endl; //" - "; //TODO: do this per thread later!!!
