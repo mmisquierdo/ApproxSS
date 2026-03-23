@@ -480,13 +480,13 @@ namespace AccessHandler {
 			return mainThread.isThreadInjectionEnabled();
 		#endif
 	}*/
-	static const ThreadControl& GetInterestThreadControl(IF_PIN_LOCKED(const THREADID threadId)) {
+	/*static const ThreadControl& GetInterestThreadControl(IF_PIN_LOCKED(const THREADID threadId)) {
 		#if PIN_LOCKED
 			return *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
 		#else
 			return PintoolControl::g_mainThreadControl;
 		#endif
-	}
+	}*/
 
 	#if PIN_LOCKED
 		static bool IsPresent(IF_PIN_LOCKED_COMMA(const ThreadControl& threadControl) IF_PIN_LOCKED(const Range& range)) {
@@ -516,9 +516,9 @@ namespace AccessHandler {
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator it =  mainThread.m_activeBuffers.find(range);
 			if (it != mainThread.m_activeBuffers.cend()) {
-				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
-				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
-				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+				//ChosenTermApproximateBuffer& approxBuffer = *(it->second);
+				//const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				//(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			
 				#if BUFFERS_LAYERED_COUNTER
 					g_buffersAccessCounter[accessType] += accessSizeInBytes;
@@ -526,9 +526,9 @@ namespace AccessHandler {
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
-				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
-				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
-				(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+				//ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
+				//const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				//(approxBuffer.*function)(accessedAddress, accessSizeInBytes, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			
 				#if BUFFERS_LAYERED_COUNTER
 					g_buffersAccessCounter[accessType] += accessSizeInBytes;
@@ -584,11 +584,9 @@ namespace AccessHandler {
 		#if MULTIPLE_ACTIVE_BUFFERS
 			const ActiveBuffers::const_iterator it = mainThread.m_activeBuffers.find(range);
 			if (it != mainThread.m_activeBuffers.cend()) {
-				ChosenTermApproximateBuffer& approxBuffer = *(it->second);
-
-				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
-
-				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+				//ChosenTermApproximateBuffer& approxBuffer = *(it->second);
+				//const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				//(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			
 				#if BUFFERS_LAYERED_COUNTER
 					g_buffersAccessCounter[accessType] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);
@@ -596,11 +594,9 @@ namespace AccessHandler {
 			}
 		#else
 			if (mainThread.m_activeBuffer != nullptr && mainThread.m_activeBuffer->DoesIntersectWith(accessedAddress)) {
-				ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
-
-				const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
-
-				(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
+				//ChosenTermApproximateBuffer& approxBuffer = *(mainThread.m_activeBuffer);
+				//const ThreadControl& interestControl = AccessHandler::GetInterestThreadControl(IF_PIN_LOCKED(threadId));
+				//(approxBuffer.*function)(memOpInfo, interestControl.isThreadInjectionEnabled() IF_COMMA_PIN_LOCKED(AccessHandler::IsPresent(interestControl, range)));
 			
 				#if BUFFERS_LAYERED_COUNTER
 					g_buffersAccessCounter[accessType] += memOpInfo->NumOfElements() * memOpInfo->ElementSize(0);

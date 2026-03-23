@@ -18,11 +18,11 @@ constexpr size_t BYTE_SIZE = 8;
 #endif
 
 #ifndef LONG_TERM_BUFFER
-	#define LONG_TERM_BUFFER true
+	#define LONG_TERM_BUFFER false
 #endif
 
 #ifndef SHORT_TERM_BUFFER
-	#define SHORT_TERM_BUFFER (!LONG_TERM_BUFFER && false)
+	#define SHORT_TERM_BUFFER (!LONG_TERM_BUFFER && true)
 #endif
 
 #ifndef MULTIPLE_ACTIVE_BUFFERS
