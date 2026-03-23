@@ -1018,11 +1018,11 @@ namespace PintoolOutput {
 			PintoolControl::g_mainThreadControl.~ThreadControl();
 		#endif
 
-		PintoolOutput::WriteAccessLog();
+		//PintoolOutput::WriteAccessLog();
 
-		if (!g_consumptionProfiles.empty()) {
+		/*if (!g_consumptionProfiles.empty()) {
 			PintoolOutput::WriteEnergyLog();
-		}
+		}*/
 
 		PintoolOutput::DeleteDataEstructures();
 	}
