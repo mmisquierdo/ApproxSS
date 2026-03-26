@@ -916,7 +916,7 @@ namespace PintoolOutput {
 	}
 
 	VOID WriteAccessLog() {
-		PintoolOutput::accessLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
+		/*PintoolOutput::accessLog << "Total Injection Calls: " << g_injectionCalls << std::endl;
 		
 		std::array<uint64_t, ErrorCategory::Size> totalTargetInjections;
 		std::fill_n(totalTargetInjections.data(), ErrorCategory::Size, 0);
@@ -952,7 +952,7 @@ namespace PintoolOutput {
 			}
 
 			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
-		#endif
+		#endif*/
 
 		WriteDownLayeredAccesses(PintoolOutput::accessLog, g_layeredAccesses, "OVERALL APPLICATION LAYERED ACCESS");
 
@@ -1018,7 +1018,7 @@ namespace PintoolOutput {
 			PintoolControl::g_mainThreadControl.~ThreadControl();
 		#endif
 
-		//PintoolOutput::WriteAccessLog();
+		PintoolOutput::WriteAccessLog();
 
 		/*if (!g_consumptionProfiles.empty()) {
 			PintoolOutput::WriteEnergyLog();
