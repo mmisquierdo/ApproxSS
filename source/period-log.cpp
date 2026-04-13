@@ -98,7 +98,7 @@ bool PeriodLog::IsVirgin() const {
 
 		oss << std::endl;
 
-		if (!periodTotalInjected) {
+		if (periodTotalInjected) {
 			outputLog << oss.str();
 		}
 	}
