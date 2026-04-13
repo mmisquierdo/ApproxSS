@@ -7,12 +7,12 @@
 #include "compiling-options.h"
 
 struct ConsumptionType { 
-	static constexpr size_t Reference =		0;
+	static constexpr size_t Precise =		0;
 	static constexpr size_t Approximate =	1; 
 	static constexpr size_t Size =			2;
 };
 
-const std::array<const std::string, ConsumptionType::Size> ConsumptionTypeNames = {"REFERENCE", "APPROXIMATE"};
+const std::array<const std::string, ConsumptionType::Size> ConsumptionTypeNames = {"Precise", "Approximate"};
 
 class ConsumptionProfile {
 	const int64_t m_configurationId;

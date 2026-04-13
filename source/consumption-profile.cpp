@@ -37,7 +37,7 @@ std::string ConsumptionProfile::toString(const std::string& lineStart /*= ""*/) 
 
 	if (this->HasReferenceValues()) {
 		s += lineStart + "REFERENCE_VALUES\n";
-		this->StringfyConsumptionValues(s, lineStart, ConsumptionType::Reference);
+		this->StringfyConsumptionValues(s, lineStart, ConsumptionType::Precise);
 	} else {
 		s += lineStart + "NO_REFERENCE_VALUES\n";
 	}

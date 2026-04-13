@@ -421,7 +421,7 @@ void PintoolInput::ProcessEnergyProfile(const std::string& profileFilename) {
 
 		if (ConsumptionFieldCode::REFERENCE_VALUES == readFieldCode) {
 			consumptionProfile->SetHasReference(true);
-			PintoolInput::ProcessConsumptionValue(inputFile, line, lineCount, *consumptionProfile, respectiveInjectorCfg, ConsumptionType::Reference);
+			PintoolInput::ProcessConsumptionValue(inputFile, line, lineCount, *consumptionProfile, respectiveInjectorCfg, ConsumptionType::Precise);
 		} else {
 			consumptionProfile->SetHasReference(false);
 		}

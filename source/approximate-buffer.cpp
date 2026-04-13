@@ -344,17 +344,16 @@ bool ApproximateBuffer::IsIgnorableMisaligned(uint8_t const * const address, con
 
 void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding /*= ""*/) const {
 	const std::string padding = basePadding + '\t';
-	outputLog << basePadding << "BUFFER START" << std::endl;
-	outputLog << padding << "Buffer Id: " << this->m_id << std::endl;
+	outputLog << basePadding << "Buffer {" << std::endl;
+	outputLog << padding << "Id: " << this->m_id << std::endl;
 	outputLog << padding << "Initial Address: " << (size_t) this->m_initialAddress << std::endl;	//static_cast<size_t>
 	outputLog << padding << "Final Address: " << (size_t) this->m_finalAddress << std::endl;				//static_cast<size_t>
 	outputLog << padding << "Configuration Id: " << this->m_faultInjector.GetConfigurationId() << std::endl;
 	outputLog << padding << "Data Size (Bytes): " << this->m_dataSizeInBytes << std::endl;
 	outputLog << padding << "Bit Depth: " << this->m_faultInjector.GetBitDepth() << std::endl;
 
-	outputLog << padding << "Buffer Software Implementation Size Bytes/Bits: " << this->GetSoftwareBufferSizeInBytes() << " / " << this->GetSoftwareBufferSizeInBits() << std::endl;
-	outputLog << padding << "Buffer Proposed Implementation Size Bytes/Bits: " << (this->GetImplementationBufferSizeInBits() / BYTE_SIZE) << " / " << this->GetImplementationBufferSizeInBits() << std::endl;
-	outputLog << padding << "Buffer Elements: " << this->GetNumberOfElements() << std::endl << std::endl;
+	outputLog << padding << "Software/Proposed Size Bytes: " << this->GetSoftwareBufferSizeInBytes() << " / " << FormatDouble(CalculateProposedByteSize(this->GetNumberOfElements(), this->m_faultInjector.GetBitDepth())) << std::endl;
+	outputLog << padding << "Elements: " << this->GetNumberOfElements() << std::endl << std::endl;
 }
  
 
@@ -373,18 +372,22 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 		bufLog->WriteAccessLogToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes, totalTargetInjections, padding);
 	}
 
-	outputLog << padding << "BUFFER TOTALS" << std::endl;
-
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
-		for (size_t j = 0; j < AccessTypes::Size; ++j) {
-			WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i][j], AccessTypesNames[j], "Buffer " + AccessPrecisionNames[i], padding);
-			totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
+	if (!IsAccessBufferCountVirgin(bufferAccessedBytes)) {
+		outputLog << padding << "Totals {" << std::endl;
+		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+			for (size_t j = 0; j < AccessTypes::Size; ++j) {
+				if (bufferAccessedBytes[i][j]) {
+					WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i][j], AccessTypesNames[j], /*"Buffer " +*/ AccessPrecisionNames[i], padding + "\t");
+					totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
+				}
+			}
 		}
+		outputLog << padding << "}\n" << std::endl;
 	}
 
-	outputLog << padding << "Buffer Active Periods: " << activePeriodsCount << std::endl;
+	outputLog << padding << "Active Periods: " << activePeriodsCount << std::endl;
 
-	outputLog << basePadding << "BUFFER END" << std::endl;
+	outputLog << basePadding << "}" << std::endl;
 }
 
 void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding) const {
@@ -395,22 +398,26 @@ void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::arra
 
 	uint64_t activePeriodsCount	= 0;
 	std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> bufferEnergy;
-	std::fill_n(bufferEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, 0);
+	std::fill_n(bufferEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, -std::numeric_limits<double>::denorm_min());
 
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;
 		bufLog->WriteEnergyLogToFile(outputLog, bufferEnergy, respectiveConsumptionProfile, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, this->GetSoftwareBufferSizeInBytes(), padding);
 	}
 
-	outputLog << padding << "BUFFER TOTALS" << std::endl;
+	if (WasEnergySpent(bufferEnergy)) {
+		outputLog << padding << "Total {" << std::endl;
 
-	WriteEnergyConsumptionToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
-	//WriteEnergyConsumptionSavingsToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
-	AddEnergyConsumption(totalTargetEnergy, bufferEnergy);
+		WriteEnergyConsumptionToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding + '\t');
+		//WriteEnergyConsumptionSavingsToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
+		AddEnergyConsumption(totalTargetEnergy, bufferEnergy);
 
-	outputLog << padding << "Buffer Active Periods: " << activePeriodsCount << std::endl;
+		outputLog << padding << "}\n" << std::endl;
+	}
 
-	outputLog << basePadding << "BUFFER END" << std::endl;
+	outputLog << padding << "Active Periods: " << activePeriodsCount << std::endl;
+
+	outputLog << basePadding << "}" << std::endl;
 }
 
 /* ==================================================================== */

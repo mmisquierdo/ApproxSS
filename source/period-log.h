@@ -29,7 +29,9 @@ class PeriodLog {
 
 		void IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/);
 
-		void WriteBerIndexesToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
+		#if MULTIPLE_BER_CONFIGURATION
+			void WriteBerIndexesToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
+		#endif
 
 		PeriodLog(PeriodLog& other, const size_t bitDepth);
 		PeriodLog(const uint64_t period, const InjectionConfigurationLocal& injectorCfg);
@@ -49,6 +51,17 @@ class PeriodLog {
 void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN = true, const std::string &basePadding = "");
 //void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN = true, const std::string &basePadding = "");
 void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& destination, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& source);
-void WriteAccessedBytesToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string& accessedType, const std::string& accessScope, const std::string& padding = "");
+
+bool WasEnergySpent(const double& energy);
+bool WasEnergySpent(const std::array<double, ErrorCategory::Size> &energy);
+bool WasEnergySpent(const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy);
+void WriteEnergyToFile(std::ofstream &outputLog, const double energy , const std::string &errorCat, const std::string &consumptionType, const std::string &padding = "");
+
+
+bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& accessBuffer);
+double CalculateProposedByteSize(const size_t elementCount, const size_t bitDepth);
+void WriteAccessedBytesToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string& accessedType, const std::string& precisionType, const std::string& padding = "");
+
+std::string FormatDouble(const double value);
 
 #endif /* BUFFER_LOG_PERIOD_H */

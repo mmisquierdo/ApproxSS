@@ -41,7 +41,7 @@ constexpr size_t BYTE_SIZE = 8;
 	#define MULTIPLE_BER_ELEMENT (DEFAULT_FAULT_INJECTOR && true)
 #endif
 
-#ifndef ENABLE_PASSIVE_INJECTION
+#ifndef ENABLE_PASSIVE_INJECTION //ITS IS PROBRABLY INJECTING CORRECTLY, BUT THE ENERGY CALCULATIONS ARE LIKELY FUCKED! TODO: decouple period, passive injection time tick and refresh!!! should all be different things!
 	#define ENABLE_PASSIVE_INJECTION false
 #endif
 

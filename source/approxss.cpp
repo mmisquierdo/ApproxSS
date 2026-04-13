@@ -896,8 +896,8 @@ namespace PintoolOutput {
 	}
 
 	VOID WriteDownLayeredAccesses(std::ofstream& outputLog, const LayeredAccess& layeredAccess, const std::string& header) {
-		outputLog << '\n' << header << std::endl;
-		outputLog << "Software Implementation Read/Written Bytes By Level: " << std::endl;
+		outputLog << '\n' << header << " {" << std::endl;
+		outputLog << "\tSoftware Implementation Read/Written Bytes By Level {" << std::endl;
 		AccessCounter totalCounter{0};
 		totalCounter.fill(0);
 		for (const auto& [hash, layerInfo] : layeredAccess) {
@@ -910,13 +910,16 @@ namespace PintoolOutput {
 				continue;
 			}
 
-			outputLog << '\t' << StringifyLevels(layerLevels) << ": " << accessLayer[AccessTypes::Read] << " / " << accessLayer[AccessTypes::Write] << std::endl;
+			outputLog << "\t\t" << StringifyLevels(layerLevels) << ": " << accessLayer[AccessTypes::Read] << " / " << accessLayer[AccessTypes::Write] << std::endl;
 
 			for (size_t i = 0; i < accessLayer.size(); ++i) {
 				totalCounter[i] += accessLayer[i];
 			}
 		}
-		outputLog << "Total Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
+		outputLog << "\t}\n";
+
+		outputLog << "\n\tTotal Software Implementation Read/Written Bytes: " << totalCounter[AccessTypes::Read] << " / " << totalCounter[AccessTypes::Write] << std::endl;
+		outputLog << "}\n";
 	}
 
 	VOID WriteAccessLog() {
@@ -934,14 +937,16 @@ namespace PintoolOutput {
 
 		uint64_t totalAccesses = 0;
 		PintoolOutput::accessLog << std::endl;
-		PintoolOutput::accessLog << "INSTRUMENTED BUFFERS" << std::endl;
+		PintoolOutput::accessLog << "Instrumented Buffers Total {" << std::endl;
 		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 			for (size_t j = 0; j < AccessTypes::Size; ++j) {
-				PintoolOutput::accessLog << "Total Software Implementation " << AccessPrecisionNames[i] << " " << AccessTypesNames[j] << " Bytes/Bits: " << totalTargetAccessesBytes[i][j] << " / " << (totalTargetAccessesBytes[i][j] * BYTE_SIZE) << std::endl;
+				PintoolOutput::accessLog << "\tTotal Software Implementation " << AccessPrecisionNames[i] << " " << AccessTypesNames[j] << " Bytes: " << totalTargetAccessesBytes[i][j] << std::endl;
 				totalAccesses += totalTargetAccessesBytes[i][j];
 			}
 		}
-		PintoolOutput::accessLog << "Total Software Implementation Accessed Bytes/Bits: " << totalAccesses << " / " << (totalAccesses * BYTE_SIZE) << std::endl;
+
+		PintoolOutput::accessLog << "\tTotal Software Implementation Accessed Bytes: " << totalAccesses << std::endl;
+		PintoolOutput::accessLog << "}" << std::endl;
 
 		#if LOG_FAULTS
 			uint64_t totalInjections = 0;
@@ -958,10 +963,10 @@ namespace PintoolOutput {
 			PintoolOutput::accessLog << "Total Errors Injected: " << (totalInjections) << std::endl;
 		#endif
 
-		WriteDownLayeredAccesses(PintoolOutput::accessLog, g_layeredAccesses, "OVERALL APPLICATION LAYERED ACCESS");
+		WriteDownLayeredAccesses(PintoolOutput::accessLog, g_layeredAccesses, "Overall Application Layered Access");
 
 		#if BUFFERS_LAYERED_COUNTER
-			WriteDownLayeredAccesses(PintoolOutput::accessLog, g_buffersLayeredAccesses, "INSTRUMENTED BUFFERS LAYERED ACCESS");
+			WriteDownLayeredAccesses(PintoolOutput::accessLog, g_buffersLayeredAccesses, "Instrumented Buffers Layered Access");
 		#endif
 
 		PintoolOutput::accessLog.close();
@@ -971,8 +976,8 @@ namespace PintoolOutput {
 		std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> totalTargetEnergy;
 		std::fill_n(totalTargetEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, 0);
 
-		PintoolOutput::energyConsumptionLog.setf(std::ios::fixed);
-		PintoolOutput::energyConsumptionLog.precision(2);
+		//PintoolOutput::energyConsumptionLog.setf(std::ios::fixed);
+		//PintoolOutput::energyConsumptionLog.precision(2);
 
 		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
 			const int64_t configurationId = approxBuffer->GetConfigurationId();
@@ -988,9 +993,10 @@ namespace PintoolOutput {
 			approxBuffer->WriteEnergyLogToFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, respectiveConsumptionProfile);
 		}
 
-		PintoolOutput::energyConsumptionLog << std::endl << "TARGET APPLICATION TOTAL ENERGY CONSUMPTION" << std::endl;
+		PintoolOutput::energyConsumptionLog << std::endl << "Target Application Total Energy Consumption {" << std::endl;
 		WriteEnergyConsumptionToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
 		//WriteEnergyConsumptionSavingsToLogFile(PintoolOutput::energyConsumptionLog, totalTargetEnergy, false, false, "	");
+		PintoolOutput::energyConsumptionLog << "}" << std::endl;
 
 		PintoolOutput::accessLog.close();
 	}

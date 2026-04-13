@@ -60,28 +60,16 @@ void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_
 }
 
 bool PeriodLog::IsVirgin() const {
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
-		for (size_t j = 0; j < AccessTypes::Size; ++j) {
-			if (this->m_accessedBytesCount[i][j] != 0) {
-				return false;
-			}
-		}
-	}
-	
-	return true;
+	return IsAccessBufferCountVirgin(this->m_accessedBytesCount);
 }
 
-void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::string &basePadding /*= ""*/) const {
-	for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-		outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " <<
-		#if MULTIPLE_BER_CONFIGURATION
-			this->m_berIndex[i]
-		#else
-			0
-		#endif
-		<< std::endl;
+#if MULTIPLE_BER_CONFIGURATION
+	void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::string &basePadding /*= ""*/) const {
+		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
+			outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " << this->m_berIndex[i] << std::endl;
+		}
 	}
-}
+#endif
 
 #if LOG_FAULTS
 	uint64_t* PeriodLog::GetErrorCountsByBit(const size_t errorCat) const {
@@ -91,52 +79,69 @@ void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::strin
 	void PeriodLog::WriteAndSumIndividualInjectionArray(std::ofstream &outputLog, const std::string errorType, const size_t bitDepth, uint64_t &bufferTotalInjected, uint64_t const *const injectedByBit, const std::string &basePadding /*= ""*/) const {
 		const std::string padding = basePadding + '\t';
 
-		outputLog << padding << errorType << " errors injected by bit:" << std::endl;
+		std::ostringstream oss;
+
+		oss << padding << errorType << " errors by bit {" << std::endl;
 
 		uint64_t periodTotalInjected = 0;
 		for (size_t i = 0; i < bitDepth; ++i) {
-			outputLog << padding << "\tBit " << i << ": " << injectedByBit[i] << std::endl;
+			if (injectedByBit[i]) {
+				oss << padding << "\t" << i << ": " << injectedByBit[i] << std::endl;
+			}
 			periodTotalInjected += injectedByBit[i];
 		}
 
-		outputLog << padding << "Period " << errorType << " injected errors: " << periodTotalInjected << std::endl;
+		oss << padding << "}" << std::endl;
+
+		oss << '\n' << padding << "Total: " << periodTotalInjected << std::endl;
 		bufferTotalInjected += periodTotalInjected;
 
-		outputLog << std::endl;
+		oss << std::endl;
+
+		if (!periodTotalInjected) {
+			outputLog << oss.str();
+		}
 	}
 #endif
 
 void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
+	if (this->IsVirgin()) {
+		return;
+	}
+	
 	const std::string padding = basePadding + '\t';
 
-	outputLog << basePadding << "PERIOD START" << std::endl;
-	outputLog << padding << "For the period: " << this->m_period << std::endl;
+	outputLog << basePadding << "Period Id: " << this->m_period << " {" << std::endl;
 
 	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
 		for (size_t j = 0; j < AccessTypes::Size; ++j) {
-			WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i][j], AccessTypesNames[j], "Period " + AccessPrecisionNames[i], padding);
-			bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
+			if (this->m_accessedBytesCount[i][j]) {
+				WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i][j], AccessTypesNames[j], /*" Period " +*/ AccessPrecisionNames[i], padding);
+				bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
+			}
 		}
 	}
-	outputLog << std::endl;
+	//outputLog << std::endl;
 
-	this->WriteBerIndexesToFile(outputLog, padding);
+	#if MULTIPLE_BER_CONFIGURATION
+		this->WriteBerIndexesToFile(outputLog, padding);
+	#endif
 
 	#if LOG_FAULTS
 		outputLog << std::endl;
-		outputLog << padding << "INJECTION COUNT START" << std::endl;
+		outputLog << padding << "Injections {" << std::endl;
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->WriteAndSumIndividualInjectionArray(outputLog, ErrorCategoryNames[i], bitDepth, totalTargetInjections[i], this->GetErrorCountsByBit(i), padding);
 		}
-		outputLog << padding << "INJECTION COUNT END" << std::endl;
+		outputLog << padding << "}" << std::endl;
 	#endif
 
-	outputLog << basePadding << "PERIOD END" << std::endl;
+	outputLog << basePadding << "}" << std::endl;
 	outputLog << std::endl;
 }
 
 void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t softwareProcessedBytes) const {
-	const bool NaN = (consumptionTypeIndex == ConsumptionType::Reference) && (!respectiveConsumptionProfile.HasReferenceValues());
+	const bool NaN = (consumptionTypeIndex == ConsumptionType::Precise) && (!respectiveConsumptionProfile.HasReferenceValues());
 
 	if (!NaN) {
 		#if MULTIPLE_BER_CONFIGURATION
@@ -148,16 +153,12 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 		const double energy = respectiveConsumptionProfile.EstimateEnergyConsumption(softwareProcessedBytes, bitDepth, dataSizeInBytes, consumptionTypeIndex, errorCat, tempBerIndex);
 		
 		periodEnergy[consumptionTypeIndex][errorCat] = energy;
+	} else {
+		periodEnergy[consumptionTypeIndex][errorCat] = -std::numeric_limits<double>::denorm_min();
 	}
 }
 
 void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
-	//precise access
-	/*for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
-			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, ConsumptionType::Reference, accessType, this->m_accessedBytesCount[AccessPrecision::Precise][accessType]);
-	}*/
-	
-	//approximate access
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
 		for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
 			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[consumptionTypeIndex][accessType]);
@@ -173,44 +174,34 @@ void PeriodLog::WriteEnergyLogToFile(std::ofstream &outputLog, std::array<std::a
 	const std::string padding = basePadding + '\t';
 
 	std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> periodEnergy;
-	std::fill_n(periodEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, 0);
+	std::fill_n(periodEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, -std::numeric_limits<double>::denorm_min());
 
 	this->CalculatePeriodEnergyConsumption(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, bufferSizeInBytes);
 
-	outputLog << basePadding << "PERIOD START" << std::endl;
-	outputLog << padding << "For the period: " << this->m_period << std::endl;
+	if (WasEnergySpent(periodEnergy)) {
+		outputLog << basePadding << "Period Id: " << this->m_period << " {" << std::endl;
 
-	WriteEnergyConsumptionToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
+		WriteEnergyConsumptionToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
 
-	//WriteEnergyConsumptionSavingsToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
+		//WriteEnergyConsumptionSavingsToLogFile(outputLog, periodEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
 
-	AddEnergyConsumption(bufferEnergy, periodEnergy);
+		AddEnergyConsumption(bufferEnergy, periodEnergy);
 
-	outputLog << basePadding << "PERIOD END" << std::endl;
-	outputLog << std::endl;
+		outputLog << basePadding << "}" << std::endl;
+		outputLog << std::endl;
+	}
 }
 
 void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN /*= true*/, const std::string &basePadding /*= ""*/) {
-	const std::string padding = basePadding + '\t';
+	//const std::string padding = basePadding + '\t';
 	
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
-		outputLog << basePadding << ConsumptionTypeNames[consumptionTypeIndex] << " ENERGY CONSUMPTION" << std::endl;
-
-		const bool NaN = checkNaN && ((consumptionTypeIndex == ConsumptionType::Reference) && !(hasReferenceValues));
-
 		for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
-			outputLog << padding << ErrorCategoryNames[errorCat] << ": ";
-
-			if (NaN) {
-				outputLog << "NaN";
-			} else {
-				outputLog << energy[consumptionTypeIndex][errorCat] << "pJ";
+			if (WasEnergySpent(energy[consumptionTypeIndex][errorCat])) {
+				WriteEnergyToFile(outputLog, energy[consumptionTypeIndex][errorCat], ErrorCategoryNames[errorCat], ConsumptionTypeNames[consumptionTypeIndex], basePadding);
 			}
-
-			outputLog << std::endl;
 		}
 	}
-	outputLog << std::endl;
 }
 
 //void WriteEnergyConsumptionSavingsToLogFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy, const bool hasReferenceValues, const bool checkNaN /*= true*/, const std::string &basePadding /*= ""*/) {
@@ -220,10 +211,10 @@ void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<
 	for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
 		outputLog << padding << ErrorCategoryNames[errorCat] << ": ";
 
-		if ((checkNaN && !hasReferenceValues) || energy[ConsumptionType::Reference][errorCat] == 0) {
+		if ((checkNaN && !hasReferenceValues) || energy[ConsumptionType::Precise][errorCat] == 0) {
 			outputLog << "NaN";
 		} else {
-			outputLog << (100 - ((energy[ConsumptionType::Approximate][errorCat] / energy[ConsumptionType::Reference][errorCat]) * 100)) << '%';
+			outputLog << (100 - ((energy[ConsumptionType::Approximate][errorCat] / energy[ConsumptionType::Precise][errorCat]) * 100)) << '%';
 		}
 		
 		outputLog << std::endl;
@@ -233,12 +224,92 @@ void WriteEnergyConsumptionToLogFile(std::ofstream &outputLog, const std::array<
 void AddEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& destination, const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& source) {
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
 		for (size_t errorCat = 0; errorCat < ErrorCategory::Size; ++errorCat) {
-			destination[consumptionTypeIndex][errorCat] += source[consumptionTypeIndex][errorCat];
+			if (WasEnergySpent(destination[consumptionTypeIndex][errorCat])) {
+				if (WasEnergySpent(source[consumptionTypeIndex][errorCat])) {
+					destination[consumptionTypeIndex][errorCat] += source[consumptionTypeIndex][errorCat];
+				} else {
+					//nothing
+				}
+			} else {
+				if (WasEnergySpent(source[consumptionTypeIndex][errorCat])) {
+					destination[consumptionTypeIndex][errorCat] = source[consumptionTypeIndex][errorCat];
+				} else {
+					//nothing
+				}
+			}
 		}
 	}
 }
 
+double CalculateProposedByteSize(const size_t elementCount, const size_t bitDepth) {
+	return(static_cast<double>(elementCount) * bitDepth) / BYTE_SIZE;
+}
+
+bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& accessBuffer) {
+	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
+		for (size_t j = 0; j < AccessTypes::Size; ++j) {
+			if (accessBuffer[i][j] != 0) {
+				return false;
+			}
+		}
+	}
+	
+	return true;
+}
+
+bool WasEnergySpent(const double& energy) {
+	return energy > 0;
+}
+
+bool WasEnergySpent(const std::array<double, ErrorCategory::Size> &energy) {
+	for (size_t i = 0; i < ErrorCategory::Size; ++i) {
+		if (WasEnergySpent(energy[i])) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+bool WasEnergySpent(const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy) {
+	for (size_t i = 0; i < ConsumptionType::Size; ++i) {
+		if (WasEnergySpent(energy[i])) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
 void WriteAccessedBytesToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string &accessedType, const std::string &accessScope, const std::string &padding /*= ""*/) {
-	outputLog << padding << accessScope << " " << accessedType << " Software Implementation Bytes/Bits: " << accessedBytes << " / " << (accessedBytes * BYTE_SIZE) << std::endl;
-	outputLog << padding << accessScope << " " << accessedType << " Proposed Implementation Bytes/Bits: " << (((accessedBytes / dataSizeInBytes) * bitDepth) / BYTE_SIZE) << " / " << ((accessedBytes / dataSizeInBytes) * bitDepth) << std::endl;
+	outputLog << padding << accessScope << " " << accessedType << " Software/Proposed Bytes: " << accessedBytes << " / " << FormatDouble(CalculateProposedByteSize(accessedBytes/dataSizeInBytes, bitDepth)) << std::endl;
+}
+
+void WriteEnergyToFile(std::ofstream &outputLog, const double energy , const std::string &errorCat, const std::string &consumptionType, const std::string &padding /*= ""*/) {
+	outputLog << padding << consumptionType << " " << errorCat << ": ";
+
+	if (WasEnergySpent(energy)) {
+		outputLog << FormatDouble(energy) << "pJ";
+	} else {
+		outputLog << "NaN";
+	}
+
+	outputLog << std::endl;
+}
+
+std::string FormatDouble(const double value) {
+    std::ostringstream oss;
+    
+    oss << std::fixed << std::setprecision(6) << value;
+    std::string str = oss.str();
+    
+    if (str.find('.') != std::string::npos) {
+        str.erase(str.find_last_not_of('0') + 1, std::string::npos);
+        
+        if (str.back() == '.') {
+            str.pop_back();
+        }
+    }
+    
+    return str;
 }
