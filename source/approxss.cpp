@@ -15,6 +15,8 @@
 #include <ctime>
 #include <sstream>
 #include "approximate-buffer.h"
+#include "approximate-buffer-map-record.h"
+#include "approximate-buffer-array-record.h"
 #include "configuration-input.h"
 #include "compiling-options.h"
 
@@ -98,9 +100,9 @@ uint64_t g_currentPeriod 	= 0; //NOTE: possible minor race condition, but 99.999
 ///////////////////////////////////////////////////////
 
 #if LONG_TERM_BUFFER
-	typedef LongTermApproximateBuffer ChosenTermApproximateBuffer;
+	typedef ApproximateBufferArrayRecord ChosenTermApproximateBuffer;
 #else
-	typedef ShortTermApproximateBuffer ChosenTermApproximateBuffer;
+	typedef ApproximateBufferMapRecord ChosenTermApproximateBuffer;
 #endif
 
 typedef std::tuple<uint8_t const *, uint8_t const *, int64_t, int64_t, size_t> GeneralBufferRecord; //<Range, BufferId, ConfigurationId, dataSizeInBytes>

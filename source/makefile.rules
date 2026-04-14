@@ -79,6 +79,11 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # See makefile.default.rules for the default build rules.
 
 # Build the intermediate object file.
+
+# Build the intermediate object file.
+$(OBJDIR)range$(OBJ_SUFFIX): range.cpp range.h compiling-options.h
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
+
 $(OBJDIR)fault-injector$(OBJ_SUFFIX): fault-injector.cpp fault-injector.h compiling-options.h
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
 
@@ -99,7 +104,15 @@ $(OBJDIR)configuration-input$(OBJ_SUFFIX): configuration-input.cpp configuration
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
-$(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buffer.h compiling-options.h
+$(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buffer.h range.h compiling-options.h
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
+
+# Build the intermediate object file. 
+$(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX): approximate-buffer-map-record.cpp approximate-buffer-map-record.h approximate-buffer.h compiling-options.h
+	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
+
+# Build the intermediate object file. 
+$(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX): approximate-buffer-array-record.cpp approximate-buffer-array-record.h approximate-buffer.h compiling-options.h
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
@@ -107,5 +120,5 @@ $(OBJDIR)approxss$(OBJ_SUFFIX): approxss.cpp compiling-options.h
 	$(CXX) $(TOOL_CXXFLAGS) -Ofast -flto=1 $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
-$(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h
+$(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) $(OBJDIR)range$(OBJ_SUFFIX) range.h $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX) approximate-buffer-map-record.h $(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX) approximate-buffer-array-record.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h
 	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wpedantic -Ofast -flto=1 $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
