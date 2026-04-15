@@ -1,7 +1,8 @@
 //MUST LOCK
 #include "tracking-buffer.h"
 
-TrackingBuffer::TrackingBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId) :
+template <bool isPrecise>
+TrackingBuffer<isPrecise>::TrackingBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId) :
     SizedRange(bufferRange, dataSizeInBytes),
 	m_id(id),
 	m_isActive(1),
@@ -24,33 +25,39 @@ TrackingBuffer::TrackingBuffer(const Range& bufferRange, const int64_t id, const
 	}
 }
 
-TrackingBuffer::~TrackingBuffer() {
+template <bool isPrecise>
+TrackingBuffer<isPrecise>::~TrackingBuffer() {
     this->CleanLogs();
 }
 
-void TrackingBuffer::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
-	for (BufferLogs::const_iterator it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
+	for (auto it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {
 		it = this->m_bufferLogs.erase(it);
 	}
 }
 
-int64_t TrackingBuffer::GetBufferId() const {
+template <bool isPrecise>
+int64_t TrackingBuffer<isPrecise>::GetBufferId() const {
 	return this->m_id;
 }
 
 //MUST LOCK
-void TrackingBuffer::StoreCurrentPeriodLog() {
-	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog<>>(this->m_periodLog, this->GetBitDepth()));
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::StoreCurrentPeriodLog() {
+	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<const PeriodLog<isPrecise>>(this->m_periodLog, this->GetBitDepth()));
 }
 
 //WAS LOCKED
-void TrackingBuffer::NextPeriod(const int64_t period) {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::NextPeriod(const int64_t period) {
 	this->StoreCurrentPeriodLog();
     this->m_periodLog.ResetCounts(period, this->GetBitDepth());
 }
 
-void TrackingBuffer::ResetOrRestorePeriodLog(const int64_t period) { //TODO: FIX? THIS IS PROBABLY WRONG, ITS CONSIDERING LINEAR PERIODS I THINK
-    const BufferLogs::const_iterator it = this->m_bufferLogs.find(period);
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::ResetOrRestorePeriodLog(const int64_t period) { //TODO: FIX? THIS IS PROBABLY WRONG, ITS CONSIDERING LINEAR PERIODS I THINK
+    const auto it = this->m_bufferLogs.find(period);
 	if (it != this->m_bufferLogs.cend()) {
 		this->m_bufferLogs.erase(it);
 	} else {
@@ -60,11 +67,13 @@ void TrackingBuffer::ResetOrRestorePeriodLog(const int64_t period) { //TODO: FIX
 
 //MUST LOCK
 //AND m_isActive MUST BE CHECKED
-void TrackingBuffer::ReactivateBuffer(const int64_t creationPeriod) {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::ReactivateBuffer(const int64_t creationPeriod) {
     this->ResetOrRestorePeriodLog(creationPeriod);
 }
 
-void TrackingBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding /*= ""*/) const {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding /*= ""*/) const {
 	const std::string padding = basePadding + '\t';
 	outputLog << basePadding << "Buffer {" << std::endl;
 	outputLog << padding << "Id: " << this->m_id << std::endl;
@@ -78,7 +87,8 @@ void TrackingBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std::s
 	outputLog << padding << "Elements: " << this->GetNumberOfElements() << std::endl << std::endl;
 }
 
-void TrackingBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
@@ -113,7 +123,8 @@ void TrackingBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<s
 	outputLog << basePadding << "}" << std::endl;
 }
 
-void TrackingBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding) const {
+template <bool isPrecise>
+void TrackingBuffer<isPrecise>::WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
 	
 	outputLog << std::endl;
@@ -142,3 +153,6 @@ void TrackingBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::array<s
 
 	outputLog << basePadding << "}" << std::endl;
 }
+
+template class TrackingBuffer<false>;
+template class TrackingBuffer<true>;

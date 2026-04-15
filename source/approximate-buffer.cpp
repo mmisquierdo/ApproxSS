@@ -2,7 +2,7 @@
 
 //WAS LOCKED
 ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
-	TrackingBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg.GetBitDepth(), injectorCfg.GetConfigurationId()),	
+	TrackingBuffer<false>(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg.GetBitDepth(), injectorCfg.GetConfigurationId()),	
 
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
 
@@ -63,7 +63,7 @@ int64_t ApproximateBuffer::GetConfigurationId() const {
 
 //WAS LOCKED
 ApproximateBuffer::~ApproximateBuffer() {
-	TrackingBuffer::~TrackingBuffer();
+	TrackingBuffer<false>::~TrackingBuffer();
 	//this->CleanLogs();
 }
 
@@ -78,7 +78,7 @@ void ApproximateBuffer::ReactivateBuffer(const int64_t creationPeriod) {
 
 	//this->m_creationPeriod = creationPeriod;
 
-	TrackingBuffer::ReactivateBuffer(creationPeriod);
+	TrackingBuffer<false>::ReactivateBuffer(creationPeriod);
 }
 
 size_t ApproximateBuffer::GetBitDepth() const {
@@ -100,7 +100,7 @@ void ApproximateBuffer::NextPeriod(const int64_t period) {
 		this->m_faultInjector.AdvanceBerIndex();
 	#endif
 
-	TrackingBuffer::NextPeriod(period);
+	TrackingBuffer<false>::NextPeriod(period);
 
 	//this->m_periodLog.ResetCounts(period, this->GetBitDepth());
 }
@@ -125,7 +125,7 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 #if ENABLE_PASSIVE_INJECTION
 	#if LOG_FAULTS
 		//MUST LOCK
-		uint64_t* ApproximateBuffer::GetPassiveErrorsLogFromIterator(const BufferLogs::const_iterator& it) const {
+		uint64_t* ApproximateBuffer::GetPassiveErrorsLogFromIterator(const BufferLogs<false>::const_iterator& it) const {
 			if (it != this->m_bufferLogs.cend()) {
 				return it->second->GetErrorCountsByBit(ErrorCategory::Passive);
 			} else {
@@ -134,7 +134,7 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 		}
 
 		//MUST LOCK
-		void ApproximateBuffer::AdvanceBufferLogIterator(BufferLogs::const_iterator& it) const {
+		void ApproximateBuffer::AdvanceBufferLogIterator(BufferLogs<false>::const_iterator& it) const {
 			if (it != this->m_bufferLogs.cend()) { //NOTE: map iterators are circular
 				++it;
 			}
@@ -220,7 +220,7 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
 
 				#if LOG_FAULTS
-					BufferLogs::const_iterator it = this->m_bufferLogs.find(initialMarker);
+					BufferLogs<false>::const_iterator it = this->m_bufferLogs.find(initialMarker);
 				#endif
 
 				for (/**/; initialMarker < currentMarker; ++initialMarker) {

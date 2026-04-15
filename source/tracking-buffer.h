@@ -4,16 +4,17 @@
 #include "range.h"
 #include "period-log.h"
 
+template<bool isPrecise = false>
+using BufferLogs = std::map<size_t, std::unique_ptr<const PeriodLog<isPrecise>>>;
 
+template <bool isPrecise = false>
 class TrackingBuffer : public SizedRange {
     protected:
 		const int64_t m_id;
 		int32_t m_isActive;
 
-		PeriodLog<> m_periodLog;
-
-		typedef std::map<size_t, const std::unique_ptr<PeriodLog<>>> BufferLogs;
-		BufferLogs m_bufferLogs;
+		PeriodLog<isPrecise> m_periodLog;
+		BufferLogs<isPrecise> m_bufferLogs;
 
         void ResetOrRestorePeriodLog(const int64_t period);
         void StoreCurrentPeriodLog();

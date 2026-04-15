@@ -25,7 +25,7 @@ class FaultInjector;
 //extern int g_level;
 extern uint64_t g_currentPeriod;
 
-class ApproximateBuffer : public TrackingBuffer {
+class ApproximateBuffer : public TrackingBuffer<false> {
 	protected:
 		const size_t m_minimumReadBackupSize;
 		//uint64_t m_creationPeriod;
@@ -55,8 +55,8 @@ class ApproximateBuffer : public TrackingBuffer {
 			void ApplyAllPassiveErrors();
 
 			#if LOG_FAULTS
-				uint64_t* GetPassiveErrorsLogFromIterator(const BufferLogs::const_iterator& it) const;
-				void AdvanceBufferLogIterator(BufferLogs::const_iterator& it) const;
+				uint64_t* GetPassiveErrorsLogFromIterator(const BufferLogs<false>::const_iterator& it) const;
+				void AdvanceBufferLogIterator(BufferLogs<false>::const_iterator& it) const;
 			#endif
 		#endif
 
