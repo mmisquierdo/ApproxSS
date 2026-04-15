@@ -40,9 +40,9 @@ class ApproximateBuffer : public SizedRange {
 			FaultInjector m_faultInjector;
 		#endif
 
-		PeriodLog m_periodLog;
+		PeriodLog<> m_periodLog;
 
-		typedef std::map<size_t, const std::unique_ptr<PeriodLog>> BufferLogs;
+		typedef std::map<size_t, const std::unique_ptr<PeriodLog<>>> BufferLogs;
 		BufferLogs m_bufferLogs;
 
 		#if ENABLE_PASSIVE_INJECTION

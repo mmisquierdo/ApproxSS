@@ -15,7 +15,7 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 		m_faultInjector(injectorCfg),
 	#endif
 
-	m_periodLog(creationPeriod, m_faultInjector),
+	m_periodLog(creationPeriod, m_faultInjector.GetBitDepth()),
 	m_bufferLogs()
 {
 
@@ -122,13 +122,13 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 	if (it != this->m_bufferLogs.cend()) {
 		this->m_bufferLogs.erase(it);
 	} else {
-		this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector);
+		this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector.GetBitDepth());
 	}
 }
 
 //MUST LOCK
 void ApproximateBuffer::StoreCurrentPeriodLog() {
-	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
+	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog<>>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
 }
 
 //WAS LOCKED
@@ -148,7 +148,7 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 		this->m_faultInjector.AdvanceBerIndex();
 	#endif
 
-	this->m_periodLog.ResetCounts(period, this->m_faultInjector);
+	this->m_periodLog.ResetCounts(period, this->m_faultInjector.GetBitDepth());
 
 	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }

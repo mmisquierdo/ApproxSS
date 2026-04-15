@@ -11,6 +11,7 @@
 #include "injector-configuration.h"
 #include "configuration-input.h"
 
+template <bool isPrecise = false>
 class PeriodLog {
 	public:
 		uint64_t m_period;
@@ -29,14 +30,14 @@ class PeriodLog {
 			void WriteBerIndexesToFile(std::ofstream& outputLog, const InjectionConfigurationReference& injectorConfigurationReference, const std::string& basePadding = "") const;
 		#endif
 
-		PeriodLog(PeriodLog& other, const size_t bitDepth);
-		PeriodLog(const uint64_t period, const InjectionConfigurationLocal& injectorCfg);
+		PeriodLog(PeriodLog<isPrecise>& other, const size_t bitDepth);
+		PeriodLog(const uint64_t period, const size_t bitDepth);
 
 		uint64_t* GetErrorCountsByBit(const size_t errorCat) const;
 
 		bool IsVirgin() const;
 
-		void ResetCounts(const uint64_t period, const InjectionConfigurationLocal& injectorCfg);
+		void ResetCounts(const uint64_t period, const size_t bitDepth);
 
 		void WriteAccessLogToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const InjectionConfigurationReference& injectorConfigurationReference, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& bufferEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes, const std::string& basePadding = "") const;

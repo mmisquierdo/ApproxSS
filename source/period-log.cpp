@@ -1,6 +1,7 @@
 #include "period-log.h"
 
-PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
+template <bool isPrecise>
+PeriodLog<isPrecise>::PeriodLog(PeriodLog<isPrecise> &other, const size_t bitDepth) {
 	this->m_period = other.m_period;
 
 	this->m_accessedBytesCount = other.m_accessedBytesCount;
@@ -14,28 +15,31 @@ PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 	#endif
 }
 
-PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
+template <bool isPrecise>
+PeriodLog<isPrecise>::PeriodLog(const uint64_t period, const size_t bitDepth) {
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-			this->m_errorsCountsByBit[i] = std::make_unique<uint64_t[]>(injectorCfg.GetBitDepth());
+			this->m_errorsCountsByBit[i] = std::make_unique<uint64_t[]>(bitDepth);
 		}
 	#endif
 
-	this->ResetCounts(period, injectorCfg);
+	this->ResetCounts(period, bitDepth);
 }
 
-void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::ResetCounts(const uint64_t period, const size_t bitDepth) {
 	this->m_period = period;
 	this->m_accessedBytesCount.fill({});
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-			std::fill_n(this->m_errorsCountsByBit[i].get(), injectorCfg.GetBitDepth(), 0);
+			std::fill_n(this->m_errorsCountsByBit[i].get(), bitDepth, 0);
 		}
 	#endif
 }
 
-void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/) {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/) {
 	#if PIN_LOCKED
 		if (isBufferInThread) {
 	#endif
@@ -47,12 +51,14 @@ void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_
 	#endif
 }
 
-bool PeriodLog::IsVirgin() const {
+template <bool isPrecise>
+bool PeriodLog<isPrecise>::IsVirgin() const {
 	return IsAccessBufferCountVirgin(this->m_accessedBytesCount);
 }
 
 #if MULTIPLE_BER_CONFIGURATION
-	void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
+	template <bool isPrecise>
+	void PeriodLog<isPrecise>::WriteBerIndexesToFile(std::ofstream &outputLog, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " << (this->m_period % injectorConfigurationReference.GetBerCount(i)) << std::endl; //this->m_berIndex[i] << std::endl;
 		}
@@ -60,11 +66,14 @@ bool PeriodLog::IsVirgin() const {
 #endif
 
 #if LOG_FAULTS
-	uint64_t* PeriodLog::GetErrorCountsByBit(const size_t errorCat) const {
+	template <bool isPrecise>
+	uint64_t* PeriodLog<isPrecise>::GetErrorCountsByBit(const size_t errorCat) const {
 		return this->m_errorsCountsByBit[errorCat].get();
 	}
 
-	void PeriodLog::WriteAndSumIndividualInjectionArray(std::ofstream &outputLog, const std::string errorType, const size_t bitDepth, uint64_t &bufferTotalInjected, uint64_t const *const injectedByBit, const std::string &basePadding /*= ""*/) const {
+
+	template <bool isPrecise>
+	void PeriodLog<isPrecise>::WriteAndSumIndividualInjectionArray(std::ofstream &outputLog, const std::string errorType, const size_t bitDepth, uint64_t &bufferTotalInjected, uint64_t const *const injectedByBit, const std::string &basePadding /*= ""*/) const {
 		const std::string padding = basePadding + '\t';
 
 		std::ostringstream oss;
@@ -92,7 +101,8 @@ bool PeriodLog::IsVirgin() const {
 	}
 #endif
 
-void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
 	if (this->IsVirgin()) {
 		return;
 	}
@@ -128,7 +138,8 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 	outputLog << std::endl;
 }
 
-void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t softwareProcessedBytes) const {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t softwareProcessedBytes) const {
 	const bool NaN = (consumptionTypeIndex == ConsumptionType::Precise) && (!respectiveConsumptionProfile.HasReferenceValues());
 
 	if (!NaN) {
@@ -146,7 +157,8 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 	}
 }
 
-void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
 	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < this->m_accessedBytesCount.size() /*ConsumptionType::Size*/; ++consumptionTypeIndex) {
 		for (size_t accessType = 0; accessType < this->m_accessedBytesCount[consumptionTypeIndex].size(); ++accessType) {
 			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[consumptionTypeIndex][accessType]);
@@ -158,7 +170,8 @@ void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, E
 	}
 }
 
-void PeriodLog::WriteEnergyLogToFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &bufferEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes, const std::string &basePadding /*= ""*/) const {
+template <bool isPrecise>
+void PeriodLog<isPrecise>::WriteEnergyLogToFile(std::ofstream &outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &bufferEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes, const std::string &basePadding /*= ""*/) const {
 	const std::string padding = basePadding + '\t';
 
 	std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> periodEnergy;
