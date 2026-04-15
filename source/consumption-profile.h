@@ -36,6 +36,7 @@ class ConsumptionProfile {
 		double EstimateEnergyConsumption(const size_t processedBytes, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t berIndex = 0) const;
 
 		#if MULTIPLE_BER_CONFIGURATION
+			size_t GetConsumptionValueCount(const size_t errorCat) const;
 			void SetConsumptionValue(const size_t consumptionType, const size_t errorCat, const size_t index, const double consumptionValue);
 			void SetConsumptionValueCount(const size_t consumptionType, const size_t errorCat, const size_t count);
 		#else

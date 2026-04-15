@@ -221,7 +221,7 @@ std::string InjectionConfigurationReference::toString(const std::string& lineSta
 		this->m_configurationId = reference.GetConfigurationId();
 		this->m_bitDepth = reference.GetBitDepth();
 
-		this->m_creationPeriod = g_currentPeriod;
+		//this->m_creationPeriod = g_currentPeriod;
 		this->UpdateBers();
 	}
 #else
@@ -261,7 +261,18 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 	return this->m_bers[errorCat];
 }
 
+const InjectionConfigurationReference& InjectionConfigurationLocal::GetReferenceConfiguration() const {
+	#if MULTIPLE_BER_CONFIGURATION
+		return this->m_reference;
+	#else
+		const auto it = g_injectorConfigurations.find(this->GetConfigurationId()); //WARNING: this also may crash the tool, but it should have crashed before
+
+		return *(it->second.get());
+	#endif
+}
+
 #if MULTIPLE_BER_CONFIGURATION
+
 	ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat, const size_t index) const {
 		return this->m_reference.GetBer(errorCat, index);
 	}
@@ -271,7 +282,7 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 	}
 
 	void InjectionConfigurationLocal::ResetBerIndex(const uint64_t newCreationPeriod) {
-		this->m_creationPeriod = newCreationPeriod;
+		//this->m_creationPeriod = newCreationPeriod;
 		this->UpdateBers();
 	}
 
@@ -294,17 +305,19 @@ ErrorType InjectionConfigurationLocal::GetBer(const size_t errorCat) const {
 		return (this->GetBerIndex() % this->GetBerCount(errorCat));
 	}
 
-	uint64_t InjectionConfigurationLocal::GetCreationPeriod() const {
-		return this->m_creationPeriod;
-	}
+	//uint64_t InjectionConfigurationLocal::GetCreationPeriod() const {
+	//	return this->m_creationPeriod;
+	//}
 
 	uint64_t InjectionConfigurationLocal::GetBerIndex() const {
-		return g_currentPeriod - this->GetCreationPeriod();
+		return g_currentPeriod; //- this->GetCreationPeriod();
 	}
 
-	uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const uint64_t period) const {
-		return period - this->GetCreationPeriod();
-	}
+	#if ENABLE_PASSIVE_INJECTION
+	//uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const uint64_t period) const {
+	//	return period - this->GetCreationPeriod();
+	//}
+	#endif
 #endif
 
 #if OVERCHARGE_BER

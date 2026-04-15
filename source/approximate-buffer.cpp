@@ -6,7 +6,7 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 	m_id(id),
 	//m_dataSizeInBytes(dataSizeInBytes),	
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
-	m_creationPeriod(creationPeriod),
+	//m_creationPeriod(creationPeriod),
 	m_isActive(1),
 
 	#if DISTANCE_BASED_FAULT_INJECTOR
@@ -116,7 +116,7 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 
 	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
 
-	this->m_creationPeriod = creationPeriod;
+	//this->m_creationPeriod = creationPeriod;
 
 	const BufferLogs::const_iterator it = this->m_bufferLogs.find(creationPeriod);
 	if (it != this->m_bufferLogs.cend()) {
@@ -301,7 +301,6 @@ void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std
 	outputLog << padding << "Software/Proposed Size Bytes: " << this->GetSoftwareBufferSizeInBytes() << " / " << FormatDouble(CalculateProposedByteSize(this->GetNumberOfElements(), this->m_faultInjector.GetBitDepth())) << std::endl;
 	outputLog << padding << "Elements: " << this->GetNumberOfElements() << std::endl << std::endl;
 }
- 
 
 void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
 	const std::string padding = basePadding + '\t';
@@ -313,9 +312,11 @@ void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::arra
 	std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
 	std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
+	const InjectionConfigurationReference& referenceConfiguration = this->m_faultInjector.GetReferenceConfiguration();
+
 	for (const auto& [_, bufLog] : this->m_bufferLogs) {
 		++activePeriodsCount;
-		bufLog->WriteAccessLogToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes, totalTargetInjections, padding);
+		bufLog->WriteAccessLogToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes, totalTargetInjections, referenceConfiguration, padding);
 	}
 
 	if (!IsAccessBufferCountVirgin(bufferAccessedBytes)) {

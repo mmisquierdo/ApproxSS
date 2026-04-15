@@ -23,14 +23,10 @@ class PeriodLog {
 			void WriteAndSumIndividualInjectionArray(std::ofstream& outputLog, const std::string errorType, const size_t bitDepth, uint64_t& bufferTotalInjected, uint64_t const * const injectedByBit, const std::string& basePadding = "") const;
 		#endif
 
-		#if MULTIPLE_BER_CONFIGURATION
-			std::array<size_t, ErrorCategory::Size> m_berIndex;
-		#endif
-
 		void IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/);
 
 		#if MULTIPLE_BER_CONFIGURATION
-			void WriteBerIndexesToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
+			void WriteBerIndexesToFile(std::ofstream& outputLog, const InjectionConfigurationReference& injectorConfigurationReference, const std::string& basePadding = "") const;
 		#endif
 
 		PeriodLog(PeriodLog& other, const size_t bitDepth);
@@ -42,7 +38,7 @@ class PeriodLog {
 
 		void ResetCounts(const uint64_t period, const InjectionConfigurationLocal& injectorCfg);
 
-		void WriteAccessLogToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
+		void WriteAccessLogToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const InjectionConfigurationReference& injectorConfigurationReference, const std::string& basePadding = "") const;
 		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& bufferEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes, const std::string& basePadding = "") const;
 		void CalculateEnergyConsumptionByErrorCategory(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t consumptionTypeIndex, const size_t errorCat, const size_t softwareProcessedBytes) const;
 		void CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const;

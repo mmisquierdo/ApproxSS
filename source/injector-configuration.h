@@ -112,7 +112,7 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 
 		#if MULTIPLE_BER_CONFIGURATION
 			const InjectionConfigurationReference& m_reference;
-			uint64_t m_creationPeriod;
+			//uint64_t m_creationPeriod;
 		#endif
 
 	public:
@@ -123,13 +123,17 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 	
 		ErrorType GetBer(const size_t errorCat) const;
 
+		const InjectionConfigurationReference& GetReferenceConfiguration() const;
+
 		#if MULTIPLE_BER_CONFIGURATION
 			ErrorType GetBer(const size_t errorCat, const size_t index) const;	
 
 			uint64_t GetBerCurrentIndex(const size_t errorCat) const;
 			uint64_t GetCreationPeriod() const;
 			uint64_t GetBerIndex() const;
+			#if ENABLE_PASSIVE_INJECTION
 			uint64_t GetBerIndexFromPeriod(const uint64_t period) const;
+			#endif
 			size_t GetBerCount(const size_t errorCat) const;
 
 			void AdvanceBerIndex();

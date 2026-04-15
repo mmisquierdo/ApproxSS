@@ -61,6 +61,10 @@ double ConsumptionProfile::EstimateEnergyConsumption(const size_t softwareProces
 }
 
 #if MULTIPLE_BER_CONFIGURATION
+	size_t ConsumptionProfile::GetConsumptionValueCount(const size_t errorCat) const {
+		return this->m_consumptionValuesCount[errorCat];
+	}
+
 	void ConsumptionProfile::SetConsumptionValue(const size_t consumptionType, const size_t errorCat, const size_t index, const double consumptionValue) {
 		this->m_consumptionValues[consumptionType][errorCat][index]	= consumptionValue;
 	}

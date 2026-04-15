@@ -12,12 +12,6 @@ PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 			std::swap(other.m_errorsCountsByBit[i], this->m_errorsCountsByBit[i]);
 		}
 	#endif
-
-	#if MULTIPLE_BER_CONFIGURATION
-		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-			this->m_berIndex[i] = other.m_berIndex[i];
-		}
-	#endif
 }
 
 PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
@@ -39,12 +33,6 @@ void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationL
 			std::fill_n(this->m_errorsCountsByBit[i].get(), injectorCfg.GetBitDepth(), 0);
 		}
 	#endif
-
-	#if MULTIPLE_BER_CONFIGURATION
-		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-			this->m_berIndex[i] = injectorCfg.GetBerCurrentIndex(i);
-		}
-	#endif
 }
 
 void PeriodLog::IncreaseAccess(const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread), const size_t type, const size_t size /*in bytes*/) {
@@ -64,9 +52,9 @@ bool PeriodLog::IsVirgin() const {
 }
 
 #if MULTIPLE_BER_CONFIGURATION
-	void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const std::string &basePadding /*= ""*/) const {
+	void PeriodLog::WriteBerIndexesToFile(std::ofstream &outputLog, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
-			outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " << this->m_berIndex[i] << std::endl;
+			outputLog << basePadding << ErrorCategoryNames[i] << " sub-BER index: " << (this->m_period % injectorConfigurationReference.GetBerCount(i)) << std::endl; //this->m_berIndex[i] << std::endl;
 		}
 	}
 #endif
@@ -104,7 +92,7 @@ bool PeriodLog::IsVirgin() const {
 	}
 #endif
 
-void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const std::string &basePadding /*= ""*/) const {
+void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitDepth, const size_t dataSizeInBytes, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> &bufferAccessedBytes, std::array<uint64_t, ErrorCategory::Size> &totalTargetInjections, const InjectionConfigurationReference& injectorConfigurationReference, const std::string &basePadding /*= ""*/) const {
 	if (this->IsVirgin()) {
 		return;
 	}
@@ -124,7 +112,7 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 	//outputLog << std::endl;
 
 	#if MULTIPLE_BER_CONFIGURATION
-		this->WriteBerIndexesToFile(outputLog, padding);
+		this->WriteBerIndexesToFile(outputLog, injectorConfigurationReference, padding);
 	#endif
 
 	#if LOG_FAULTS
@@ -145,7 +133,7 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 
 	if (!NaN) {
 		#if MULTIPLE_BER_CONFIGURATION
-			const size_t tempBerIndex = this->m_berIndex[errorCat];
+			const size_t tempBerIndex = this->m_period % respectiveConsumptionProfile.GetConsumptionValueCount(errorCat);  //this->m_berIndex[errorCat];
 		#else
 			const size_t tempBerIndex = 0;
 		#endif

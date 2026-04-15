@@ -28,7 +28,7 @@ class ApproximateBuffer : public SizedRange {
 	protected:
 		const int64_t m_id;
 		const size_t m_minimumReadBackupSize;
-		uint64_t m_creationPeriod;
+		//uint64_t m_creationPeriod;
 		//PIN_LOCK m_bufferLock;
 		int32_t m_isActive;
 
