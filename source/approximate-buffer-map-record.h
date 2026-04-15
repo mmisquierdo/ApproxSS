@@ -89,7 +89,7 @@ class ApproximateBufferMapRecord : virtual public ApproximateBuffer {
 
 		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false));
 
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
+		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords);
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));

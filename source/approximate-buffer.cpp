@@ -2,43 +2,17 @@
 
 //WAS LOCKED
 ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
-	SizedRange(bufferRange, dataSizeInBytes),
-	m_id(id),
-	//m_dataSizeInBytes(dataSizeInBytes),	
+	TrackingBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg.GetBitDepth(), injectorCfg.GetConfigurationId()),	
+
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
-	//m_creationPeriod(creationPeriod),
-	m_isActive(1),
 
 	#if DISTANCE_BASED_FAULT_INJECTOR
-		m_faultInjector(injectorCfg, dataSizeInBytes),
+		m_faultInjector(injectorCfg, dataSizeInBytes)
 	#else
-		m_faultInjector(injectorCfg),
+		m_faultInjector(injectorCfg)
 	#endif
-
-	m_periodLog(creationPeriod, m_faultInjector.GetBitDepth()),
-	m_bufferLogs()
 {
-
-	if (this->m_faultInjector.GetBitDepth() > (this->m_dataSizeInBytes * BYTE_SIZE)) {
-		std::cerr << "ApproxSS Error: Bit Depth (" << injectorCfg.GetBitDepth() << "bits in Configuration " << injectorCfg.GetConfigurationId() << ") greater than Data Size (" << (this->m_dataSizeInBytes * BYTE_SIZE) << "bits in Buffer " << this->m_id << ")" << std::endl;
-		PIN_ExitProcess(EXIT_FAILURE);
-	}
-
-	if (this->m_initialAddress > this->m_finalAddress) {
-		std::cerr << "ApproxSS Error: On Buffer " << this->m_id << ".  Initial address (" << ((size_t) this->m_initialAddress) << ") must be less than final address (" << ((size_t) this->m_finalAddress)  << ")" << std::endl; //static_cast<size_t>
-		PIN_ExitProcess(EXIT_FAILURE);
-	}
-
-	if (this->size() < this->m_dataSizeInBytes) {
-		std::cerr << "ApproxSS Error: On Buffer " << this->m_id << ". Buffer Size (" << this->size() << ") must be greater or equal to Data Size (" << this->m_dataSizeInBytes << ")" << std::endl;
-		PIN_ExitProcess(EXIT_FAILURE);
-	}
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
 	ApproximateBuffer::InitializeRecordsAndBackups(creationPeriod);
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //MUST LOCK
@@ -87,29 +61,15 @@ int64_t ApproximateBuffer::GetConfigurationId() const {
 	return this->m_faultInjector.GetConfigurationId();
 }
 
-int64_t ApproximateBuffer::GetBufferId() const {
-	return this->m_id;
-}
-
-//MUST LOCK
-void ApproximateBuffer::CleanLogs() { //for some reason, just calling .clear will cause a segmentation fault
-	for (BufferLogs::const_iterator it = this->m_bufferLogs.cbegin(); it != this->m_bufferLogs.cend(); ) {
-		it = this->m_bufferLogs.erase(it);
-	}
-}
-
 //WAS LOCKED
 ApproximateBuffer::~ApproximateBuffer() {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
-	this->CleanLogs();
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	TrackingBuffer::~TrackingBuffer();
+	//this->CleanLogs();
 }
 
 //MUST LOCK
 //AND m_isActive MUST BE CHECKED
-void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
+void ApproximateBuffer::ReactivateBuffer(const int64_t creationPeriod) {
 	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.ResetBerIndex(creationPeriod);
 	#endif
@@ -118,23 +78,15 @@ void ApproximateBuffer::ReactivateBuffer(const uint64_t creationPeriod) {
 
 	//this->m_creationPeriod = creationPeriod;
 
-	const BufferLogs::const_iterator it = this->m_bufferLogs.find(creationPeriod);
-	if (it != this->m_bufferLogs.cend()) {
-		this->m_bufferLogs.erase(it);
-	} else {
-		this->m_periodLog.ResetCounts(creationPeriod, this->m_faultInjector.GetBitDepth());
-	}
+	TrackingBuffer::ReactivateBuffer(creationPeriod);
 }
 
-//MUST LOCK
-void ApproximateBuffer::StoreCurrentPeriodLog() {
-	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<PeriodLog<>>(this->m_periodLog, this->m_faultInjector.GetBitDepth()));
+size_t ApproximateBuffer::GetBitDepth() const {
+	return this->m_faultInjector.GetBitDepth();
 }
 
 //WAS LOCKED
-void ApproximateBuffer::NextPeriod(const uint64_t period) {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
+void ApproximateBuffer::NextPeriod(const int64_t period) {
 	#if ENABLE_PASSIVE_INJECTION && DISTANCE_BASED_FAULT_INJECTOR 
 		if (this->m_faultInjector.isInjectable(ErrorCategory::Passive)) {
 			this->m_faultInjector.InjectFault(this->m_initialAddress, ErrorCategory::Passive, this->GetSoftwareBufferSSizeInBytes(), nullptr IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive)));
@@ -142,15 +94,15 @@ void ApproximateBuffer::NextPeriod(const uint64_t period) {
 		}
 	#endif
 
-	this->StoreCurrentPeriodLog();
+	//this->StoreCurrentPeriodLog();
 
 	#if MULTIPLE_BER_CONFIGURATION
 		this->m_faultInjector.AdvanceBerIndex();
 	#endif
 
-	this->m_periodLog.ResetCounts(period, this->m_faultInjector.GetBitDepth());
+	TrackingBuffer::NextPeriod(period);
 
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	//this->m_periodLog.ResetCounts(period, this->GetBitDepth());
 }
 
 uint64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
@@ -164,6 +116,10 @@ size_t ApproximateBuffer::GetTotalNecessaryReadBackupSize() const {
 //MUST LOCK
 bool ApproximateBuffer::GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const {
 	return isThreadInjectionEnabled IF_PIN_LOCKED(&& isBufferInThread) && this->m_faultInjector.isInjectable(errorCat); 
+}
+
+const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurationReference() const {
+	return this->m_faultInjector.GetReferenceConfiguration();
 }
 
 #if ENABLE_PASSIVE_INJECTION
@@ -287,82 +243,3 @@ bool ApproximateBuffer::GetShouldInject(const size_t errorCat, const bool isThre
 		}
 	#endif
 #endif
-
-void ApproximateBuffer::WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding /*= ""*/) const {
-	const std::string padding = basePadding + '\t';
-	outputLog << basePadding << "Buffer {" << std::endl;
-	outputLog << padding << "Id: " << this->m_id << std::endl;
-	outputLog << padding << "Initial Address: " << (size_t) this->m_initialAddress << std::endl;	//static_cast<size_t>
-	outputLog << padding << "Final Address: " << (size_t) this->m_finalAddress << std::endl;				//static_cast<size_t>
-	outputLog << padding << "Configuration Id: " << this->m_faultInjector.GetConfigurationId() << std::endl;
-	outputLog << padding << "Data Size (Bytes): " << this->m_dataSizeInBytes << std::endl;
-	outputLog << padding << "Bit Depth: " << this->m_faultInjector.GetBitDepth() << std::endl;
-
-	outputLog << padding << "Software/Proposed Size Bytes: " << this->GetSoftwareBufferSizeInBytes() << " / " << FormatDouble(CalculateProposedByteSize(this->GetNumberOfElements(), this->m_faultInjector.GetBitDepth())) << std::endl;
-	outputLog << padding << "Elements: " << this->GetNumberOfElements() << std::endl << std::endl;
-}
-
-void ApproximateBuffer::WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding) const {
-	const std::string padding = basePadding + '\t';
-	
-	outputLog << std::endl;
-	this->WriteLogHeaderToFile(outputLog, basePadding);
-
-	uint64_t activePeriodsCount	= 0;
-	std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> bufferAccessedBytes;
-	std::fill_n(&(bufferAccessedBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
-
-	const InjectionConfigurationReference& referenceConfiguration = this->m_faultInjector.GetReferenceConfiguration();
-
-	for (const auto& [_, bufLog] : this->m_bufferLogs) {
-		++activePeriodsCount;
-		bufLog->WriteAccessLogToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes, totalTargetInjections, referenceConfiguration, padding);
-	}
-
-	if (!IsAccessBufferCountVirgin(bufferAccessedBytes)) {
-		outputLog << padding << "Totals {" << std::endl;
-		for (size_t i = 0; i < AccessPrecision::Size; ++i) {
-			for (size_t j = 0; j < AccessTypes::Size; ++j) {
-				if (bufferAccessedBytes[i][j]) {
-					WriteAccessedBytesToFile(outputLog, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, bufferAccessedBytes[i][j], AccessTypesNames[j], /*"Buffer " +*/ AccessPrecisionNames[i], padding + "\t");
-					totalTargetAccessesBytes[i][j] += bufferAccessedBytes[i][j];
-				}
-			}
-		}
-		outputLog << padding << "}\n" << std::endl;
-	}
-
-	outputLog << padding << "Active Periods: " << activePeriodsCount << std::endl;
-
-	outputLog << basePadding << "}" << std::endl;
-}
-
-void ApproximateBuffer::WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding) const {
-	const std::string padding = basePadding + '\t';
-	
-	outputLog << std::endl;
-	this->WriteLogHeaderToFile(outputLog, basePadding);
-
-	uint64_t activePeriodsCount	= 0;
-	std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> bufferEnergy;
-	std::fill_n(bufferEnergy.data()->data(), ConsumptionType::Size * ErrorCategory::Size, -std::numeric_limits<double>::denorm_min());
-
-	for (const auto& [_, bufLog] : this->m_bufferLogs) {
-		++activePeriodsCount;
-		bufLog->WriteEnergyLogToFile(outputLog, bufferEnergy, respectiveConsumptionProfile, this->m_faultInjector.GetBitDepth(), this->m_dataSizeInBytes, this->GetSoftwareBufferSizeInBytes(), padding);
-	}
-
-	if (WasEnergySpent(bufferEnergy)) {
-		outputLog << padding << "Total {" << std::endl;
-
-		WriteEnergyConsumptionToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding + '\t');
-		//WriteEnergyConsumptionSavingsToLogFile(outputLog, bufferEnergy, respectiveConsumptionProfile.HasReferenceValues(), true, padding);
-		AddEnergyConsumption(totalTargetEnergy, bufferEnergy);
-
-		outputLog << padding << "}\n" << std::endl;
-	}
-
-	outputLog << padding << "Active Periods: " << activePeriodsCount << std::endl;
-
-	outputLog << basePadding << "}" << std::endl;
-}

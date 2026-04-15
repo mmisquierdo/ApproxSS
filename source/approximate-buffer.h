@@ -18,19 +18,18 @@ class FaultInjector;
 #include "injector-configuration.h"
 #include "fault-injector.h"
 #include "consumption-profile.h"
-#include "range.h"
+//#include "range.h"
+#include "tracking-buffer.h"
 
 //extern bool g_isGlobalInjectionEnabled;
 //extern int g_level;
 extern uint64_t g_currentPeriod;
 
-class ApproximateBuffer : public SizedRange {
+class ApproximateBuffer : public TrackingBuffer {
 	protected:
-		const int64_t m_id;
 		const size_t m_minimumReadBackupSize;
 		//uint64_t m_creationPeriod;
 		//PIN_LOCK m_bufferLock;
-		int32_t m_isActive;
 
 		#if DISTANCE_BASED_FAULT_INJECTOR
 			DistanceBasedFaultInjector m_faultInjector;
@@ -39,11 +38,6 @@ class ApproximateBuffer : public SizedRange {
 		#else
 			FaultInjector m_faultInjector;
 		#endif
-
-		PeriodLog<> m_periodLog;
-
-		typedef std::map<size_t, const std::unique_ptr<PeriodLog<>>> BufferLogs;
-		BufferLogs m_bufferLogs;
 
 		#if ENABLE_PASSIVE_INJECTION
 			#if !DISTANCE_BASED_FAULT_INJECTOR
@@ -69,15 +63,9 @@ class ApproximateBuffer : public SizedRange {
 		virtual void InitializeRecordsAndBackups(const uint64_t period);
 		virtual void GiveAwayRecordsAndBackups(const bool giveAway);
 
-		void StoreCurrentPeriodLog();
-		void CleanLogs();
-
 		uint64_t GetCurrentPassiveBerMarker() const;
 		bool GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const;
 		size_t GetTotalNecessaryReadBackupSize() const;
-
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 
 	public:
 		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
@@ -86,26 +74,17 @@ class ApproximateBuffer : public SizedRange {
 		ApproximateBuffer(const ApproximateBuffer&) = delete;
 		ApproximateBuffer(const ApproximateBuffer&&) = delete;
 
-		virtual ~ApproximateBuffer();		
+		virtual ~ApproximateBuffer();
+		
+		virtual int64_t GetConfigurationId() const;
+        virtual size_t GetBitDepth() const;
+
+		virtual const InjectionConfigurationReference& GetInjectionConfigurationReference() const;
 
 		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false)) = 0;
 
-		void NextPeriod(const uint64_t period);
-		virtual void ReactivateBuffer(const uint64_t creationPeriod);
-		virtual bool RetireBuffer(const bool giveAwayRecords) = 0; //return true if it's retired
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
-		
-		int64_t GetConfigurationId() const;
-		int64_t GetBufferId() const;
-
-		void WriteLogHeaderToFile(std::ofstream& outputLog, const std::string& basePadding = "") const;
-		void WriteAccessLogToFile(std::ofstream& outputLog, std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& totalTargetAccessesBytes, std::array<uint64_t, ErrorCategory::Size>& totalTargetInjections, const std::string& basePadding = "") const;
-		void WriteEnergyLogToFile(std::ofstream& outputLog, std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size>& totalTargetEnergy, const ConsumptionProfile& respectiveConsumptionProfile, const std::string& basePadding = "") const;
+		virtual void NextPeriod(const int64_t period);
+		virtual void ReactivateBuffer(const int64_t creationPeriod);
 };
 
 #endif /* APPROXIMATE_BUFFER_H */

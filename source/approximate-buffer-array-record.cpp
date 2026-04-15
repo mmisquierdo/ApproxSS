@@ -24,9 +24,9 @@ ApproximateBufferArrayRecord::ApproximateBufferArrayRecord(const Range& bufferRa
 						  	const InjectionConfigurationReference& injectorCfg) : 
 							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
 	
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	
 	this->InitializeRecordsAndBackups(creationPeriod);
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	
 }
 
 //WAS LOCKED (INDIRECTLY)
@@ -106,7 +106,7 @@ void ApproximateBufferArrayRecord::GiveAwayRecordsAndBackups(const bool giveAway
 
 //WAS LOCKED
 bool ApproximateBufferArrayRecord::RetireBuffer(const bool giveAwayRecords) {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	
 
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
@@ -133,21 +133,17 @@ bool ApproximateBufferArrayRecord::RetireBuffer(const bool giveAwayRecords) {
 		return true;
 	}
 
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	
 }
 
 //WAS LOCKED
-void ApproximateBufferArrayRecord::ReactivateBuffer(const uint64_t period) {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
+void ApproximateBufferArrayRecord::ReactivateBuffer(const int64_t period) {
 	if (this->m_isActive == 0) { //failsafe againt repeated reactivations
 		ApproximateBuffer::ReactivateBuffer(period);
 		ApproximateBufferArrayRecord::InitializeRecordsAndBackups(period);
 	}
 
-	this->m_isActive++;
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	this->m_isActive++;	
 }
 
 //MUST LOCK
@@ -308,13 +304,11 @@ void ApproximateBufferArrayRecord::ProcessReadMemoryElement(const size_t element
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
+	
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	const size_t accessedElementCount = accessSize / this->m_dataSizeInBytes;
 	const size_t endElementIndex = firstElementIndex + accessedElementCount;
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
@@ -326,11 +320,8 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteSIMD(uint8_t * const initial
 
 	for (size_t elementIndex = firstElementIndex; elementIndex < endElementIndex; ++elementIndex) {
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
-	}
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
+	}	
 }
-
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
@@ -342,10 +333,8 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementSafe(uint8_t * 
 		this->HandleMemoryWriteSIMD(accessedAddress, accessSize, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 		return;
 	}
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
+	
 	this->HandleMemoryWriteSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
@@ -365,8 +354,6 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t 
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
 	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
@@ -383,19 +370,15 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPE
 
 		this->ProcessWrittenMemoryElement(elementIndex, newStatus, shouldInject);
 	}
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
+	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
+	
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	uint8_t* currentAddress = initialAddress;
 	uint8_t const * const finalAddress = initialAddress + accessSize;
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread)); 
 
@@ -408,8 +391,6 @@ void ApproximateBufferArrayRecord::HandleMemoryReadSIMD(uint8_t * const initialA
 			this->m_faultInjector.InjectFault(initialAddress, ErrorCategory::Read, static_cast<ssize_t>(accessSize), this IF_COMMA_LOGGING_FAULTS(this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Read)));
 		}
 	#endif
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 //WAS LOCKED
@@ -423,9 +404,7 @@ void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementSafe(uint8_t * c
 		return;
 	}
 
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
 	this->HandleMemoryReadSingleElementUnsafe(accessedAddress, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
 
 void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
@@ -445,8 +424,6 @@ void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementUnsafe(uint8_t *
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	//IF_PIN_PRIVATE_LOCKED(PIN_GetLock(&this->m_bufferLock, -1);)
-
 	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
@@ -463,6 +440,4 @@ void ApproximateBufferArrayRecord::HandleMemoryReadScattered(IMULTI_ELEMENT_OPER
 			}
 		#endif
 	}
-
-	//IF_PIN_PRIVATE_LOCKED(PIN_ReleaseLock(&this->m_bufferLock);)
 }
