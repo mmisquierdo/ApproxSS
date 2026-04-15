@@ -1066,12 +1066,6 @@ KNOB<std::string> RNGSeed(						KNOB_MODE_WRITEONCE, "pintool", "seed", "", "spe
 
 int main(const int argc, char* argv[]) {
 	// Initialize symbol table code, needed for rtn instrumentation
-	std::cout << "about to initialize" << std::endl;
-	PeriodLog<> mytest(666, 8);
-	std::cout << "initialized" << std::endl;
-	mytest.IncreaseAccess(true, AccessTypes::Read, 66);
-	std::cout << mytest.IsVirgin() << std::endl;
-	std::cout << "increased" << std::endl;
 
 	PIN_InitSymbols();
 	if (PIN_Init(argc, argv)) return Usage();

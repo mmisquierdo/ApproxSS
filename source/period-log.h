@@ -16,7 +16,7 @@ class PeriodLog {
 	public:
 		uint64_t m_period;
 
-		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> m_accessedBytesCount;
+		std::array<std::array<uint64_t, AccessTypes::Size>, isPrecise ? 1 : AccessPrecision::Size> m_accessedBytesCount;
 
 		#if LOG_FAULTS
 			std::array<std::unique_ptr<uint64_t[]>, ErrorCategory::Size> m_errorsCountsByBit;
