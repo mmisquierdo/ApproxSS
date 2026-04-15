@@ -53,7 +53,7 @@ bool WasEnergySpent(const std::array<double, ErrorCategory::Size> &energy);
 bool WasEnergySpent(const std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &energy);
 void WriteEnergyToFile(std::ofstream &outputLog, const double energy , const std::string &errorCat, const std::string &consumptionType, const std::string &padding = "");
 
-
+bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, 1>& accessBuffer);
 bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& accessBuffer);
 double CalculateProposedByteSize(const size_t elementCount, const size_t bitDepth);
 void WriteAccessedBytesToFile(std::ofstream& outputLog, const size_t bitDepth, const size_t dataSizeInBytes, const uint64_t accessedBytes, const std::string& accessedType, const std::string& precisionType, const std::string& padding = "");

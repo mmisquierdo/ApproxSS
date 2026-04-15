@@ -3,7 +3,7 @@
 PeriodLog::PeriodLog(PeriodLog &other, const size_t bitDepth) {
 	this->m_period = other.m_period;
 
-	std::copy_n(&(other.m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, &(this->m_accessedBytesCount[0][0]));
+	this->m_accessedBytesCount = other.m_accessedBytesCount;
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -26,7 +26,7 @@ PeriodLog::PeriodLog(const uint64_t period, const InjectionConfigurationLocal &i
 
 void PeriodLog::ResetCounts(const uint64_t period, const InjectionConfigurationLocal &injectorCfg) {
 	this->m_period = period;
-	std::fill_n(&(this->m_accessedBytesCount[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
+	this->m_accessedBytesCount.fill({});
 
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
@@ -101,8 +101,8 @@ void PeriodLog::WriteAccessLogToFile(std::ofstream &outputLog, const size_t bitD
 
 	outputLog << basePadding << "Period Id: " << this->m_period << " {" << std::endl;
 
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
-		for (size_t j = 0; j < AccessTypes::Size; ++j) {
+	for (size_t i = 0; i < this->m_accessedBytesCount.size(); ++i) {
+		for (size_t j = 0; j < this->m_accessedBytesCount[i].size(); ++j) {
 			if (this->m_accessedBytesCount[i][j]) {
 				WriteAccessedBytesToFile(outputLog, bitDepth, dataSizeInBytes, this->m_accessedBytesCount[i][j], AccessTypesNames[j], /*" Period " +*/ AccessPrecisionNames[i], padding);
 				bufferAccessedBytes[i][j] += this->m_accessedBytesCount[i][j];
@@ -147,8 +147,8 @@ void PeriodLog::CalculateEnergyConsumptionByErrorCategory(std::array<std::array<
 }
 
 void PeriodLog::CalculatePeriodEnergyConsumption(std::array<std::array<double, ErrorCategory::Size>, ConsumptionType::Size> &periodEnergy, const ConsumptionProfile &respectiveConsumptionProfile, const size_t bitDepth, const size_t dataSizeInBytes, const size_t bufferSizeInBytes) const {
-	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < ConsumptionType::Size; ++consumptionTypeIndex) {
-		for (size_t accessType = 0; accessType < AccessTypes::Size; ++accessType) {
+	for (size_t consumptionTypeIndex = 0; consumptionTypeIndex < this->m_accessedBytesCount.size() /*ConsumptionType::Size*/; ++consumptionTypeIndex) {
+		for (size_t accessType = 0; accessType < this->m_accessedBytesCount[consumptionTypeIndex].size(); ++accessType) {
 			this->CalculateEnergyConsumptionByErrorCategory(periodEnergy, respectiveConsumptionProfile, bitDepth, dataSizeInBytes, consumptionTypeIndex, accessType, this->m_accessedBytesCount[consumptionTypeIndex][accessType]);
 		}
 
@@ -233,9 +233,21 @@ double CalculateProposedByteSize(const size_t elementCount, const size_t bitDept
 	return(static_cast<double>(elementCount) * bitDepth) / BYTE_SIZE;
 }
 
+bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, 1>& accessBuffer) {
+	for (size_t i = 0; i < accessBuffer.size(); ++i) {
+		for (size_t j = 0; j < accessBuffer[i].size(); ++j) {
+			if (accessBuffer[i][j] != 0) {
+				return false;
+			}
+		}
+	}
+	
+	return true;
+}
+
 bool IsAccessBufferCountVirgin(const std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size>& accessBuffer) {
-	for (size_t i = 0; i < AccessPrecision::Size; ++i) {
-		for (size_t j = 0; j < AccessTypes::Size; ++j) {
+	for (size_t i = 0; i < accessBuffer.size(); ++i) {
+		for (size_t j = 0; j < accessBuffer[i].size(); ++j) {
 			if (accessBuffer[i][j] != 0) {
 				return false;
 			}
