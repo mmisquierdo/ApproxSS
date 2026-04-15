@@ -17,6 +17,8 @@ PeriodLog<isPrecise>::PeriodLog(PeriodLog<isPrecise> &other, const size_t bitDep
 
 template <bool isPrecise>
 PeriodLog<isPrecise>::PeriodLog(const uint64_t period, const size_t bitDepth) {
+	std::cout << "PeriodLog(const uint64_t period, const size_t bitDepth)" << std::endl;
+
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_errorsCountsByBit[i] = std::make_unique<uint64_t[]>(bitDepth);
@@ -326,3 +328,6 @@ std::string FormatDouble(const double value) {
     
     return str;
 }
+
+template class PeriodLog<false>;
+template class PeriodLog<true>;
