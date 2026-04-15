@@ -76,15 +76,15 @@ class ApproximateBuffer : public TrackingBuffer<false> {
 
 		virtual ~ApproximateBuffer();
 		
-		virtual int64_t GetConfigurationId() const;
-        virtual size_t GetBitDepth() const;
+		int64_t GetConfigurationId() const override;
+        size_t GetBitDepth() const override;
 
-		virtual const InjectionConfigurationReference& GetInjectionConfigurationReference() const;
+		const InjectionConfigurationReference& GetInjectionConfigurationReference() const override;
 
 		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false)) = 0;
 
-		virtual void NextPeriod(const int64_t period);
-		virtual void ReactivateBuffer(const int64_t creationPeriod);
+		void NextPeriod(const int64_t period) override;
+		void ReactivateBuffer(const int64_t creationPeriod) override;
 };
 
 #endif /* APPROXIMATE_BUFFER_H */

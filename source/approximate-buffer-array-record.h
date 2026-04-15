@@ -65,7 +65,7 @@ namespace BorrowedMemory {
 	#endif
 }
 
-class ApproximateBufferArrayRecord : virtual public ApproximateBuffer {
+class ApproximateBufferArrayRecord : public ApproximateBuffer {
 	protected: 
 		std::unique_ptr<InjectionRecord[]> m_records;
 		std::unique_ptr<uint8_t[]> m_readBackups;
@@ -79,8 +79,8 @@ class ApproximateBufferArrayRecord : virtual public ApproximateBuffer {
 
 		uint8_t* GetBackupAddressFromIndex(const size_t index) const;
 
-		virtual void InitializeRecordsAndBackups(const uint64_t period);
-		virtual void GiveAwayRecordsAndBackups(const bool giveAway);
+		void InitializeRecordsAndBackups(const uint64_t period) override;
+		void GiveAwayRecordsAndBackups(const bool giveAway) override;
 
 
 		void ApplyWriteFault(const size_t elementIndex, uint8_t* const accessedAddress);
@@ -93,8 +93,8 @@ class ApproximateBufferArrayRecord : virtual public ApproximateBuffer {
 		void ProcessWrittenMemoryElement(const size_t elementIndex, const uint8_t newStatus, const bool shouldInject);
 		void ProcessReadMemoryElement(const size_t elementIndex, uint8_t* const accessedAddress, const bool shouldInject IF_COMMA_LSBDROPPED(const bool reverseLSBDrop = true));
 
-		virtual void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
+		void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
+		void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 
 	public:
 		ApproximateBufferArrayRecord(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
@@ -105,16 +105,16 @@ class ApproximateBufferArrayRecord : virtual public ApproximateBuffer {
 
 		~ApproximateBufferArrayRecord();
 		
-		virtual void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false));
+		void BackupReadData(uint8_t* const data IF_COMMA_LSBDROPPED(const bool isLSBDrop = false)) override;
 
-		virtual void ReactivateBuffer(const int64_t creationPeriod);
-		virtual bool RetireBuffer(const bool giveAwayRecords);
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
+		void ReactivateBuffer(const int64_t creationPeriod) override;
+		bool RetireBuffer(const bool giveAwayRecords) override;
+		void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
 };
 
 #endif /* APPROXIMATE_BUFFER_ARRAY_RECORD_H */

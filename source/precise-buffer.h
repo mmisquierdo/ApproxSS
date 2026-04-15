@@ -6,7 +6,7 @@
 #include "injector-configuration.h"
 #include "tracking-buffer.h"
 
-class PreciseBuffer : public TrackingBuffer<true> {
+class PreciseBuffer : virtual public TrackingBuffer<true> {
 	protected:
 		const int64_t m_configurationId;
 		const size_t m_bitDepth;
@@ -20,17 +20,19 @@ class PreciseBuffer : public TrackingBuffer<true> {
 
 		~PreciseBuffer();
 		
-		virtual int64_t GetConfigurationId() const;
-        virtual size_t GetBitDepth() const;
+		int64_t GetConfigurationId() const override;
+        size_t GetBitDepth() const override;
 
-		virtual const InjectionConfigurationReference& GetInjectionConfigurationReference() const;
+		bool RetireBuffer(const bool giveAwayRecords) override; //return true if it's retired
 
-		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
-		virtual void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));	
+		const InjectionConfigurationReference& GetInjectionConfigurationReference() const override;
+
+		void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;
+		void HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) override;	
 
 		//virtual void NextPeriod(const int64_t period);
 		//virtual void ReactivateBuffer(const int64_t creationPeriod);

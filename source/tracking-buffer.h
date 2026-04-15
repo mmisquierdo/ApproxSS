@@ -22,6 +22,9 @@ class TrackingBuffer : public SizedRange {
 
     public:
         TrackingBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId);
+        
+        TrackingBuffer(const TrackingBuffer<isPrecise>&) = delete;
+        
         ~TrackingBuffer();
 
         virtual int64_t GetConfigurationId() const = 0;
@@ -33,6 +36,7 @@ class TrackingBuffer : public SizedRange {
         virtual void NextPeriod(const int64_t period);
 		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords) = 0; //return true if it's retired
+        
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;

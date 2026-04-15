@@ -17,6 +17,21 @@ size_t PreciseBuffer::GetBitDepth() const {
     return this->m_bitDepth;
 }
 
+bool PreciseBuffer::RetireBuffer(const bool giveAwayRecords) {
+    if (this->m_isActive >= 1) { //if there's at least one thread using it...
+		this->m_isActive--;
+
+		if (this->m_isActive == 0) { //failsafe against repeated retirements
+			this->StoreCurrentPeriodLog();
+			return true;
+		} else {
+			return false;
+		}
+	} else {
+		return true;
+	}
+}
+
 const InjectionConfigurationReference& PreciseBuffer::GetInjectionConfigurationReference() const {
     const auto it = g_injectorConfigurations.find(this->GetConfigurationId()); //WARNING: this also may crash the tool, but it should have crashed before
 

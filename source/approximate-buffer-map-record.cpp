@@ -18,8 +18,6 @@ ApproximateBufferMapRecord::~ApproximateBufferMapRecord() {
 
 //WAS LOCKED
 bool ApproximateBufferMapRecord::RetireBuffer(const bool giveAwayRecords) {
-	
-
 	if (this->m_isActive >= 1) { //if there's at least one thread using it...
 		this->m_isActive--;
 
@@ -41,8 +39,6 @@ bool ApproximateBufferMapRecord::RetireBuffer(const bool giveAwayRecords) {
 	} else {
 		return true;
 	}
-
-	
 }
 
 //MUST LOCK
