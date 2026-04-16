@@ -124,7 +124,7 @@ namespace PintoolControl {
                     PIN_ExitProcess(EXIT_FAILURE);
                 }
 
-                ChosenTermApproximateBuffer* const approxBuffer = new ChosenTermApproximateBuffer(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
+                ChosenTermApproximateBuffer* const approxBuffer = new ApproximateBufferArrayRecord(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
 
                 #if MULTIPLE_ACTIVE_BUFFERS
                     lbActiveMain = mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});

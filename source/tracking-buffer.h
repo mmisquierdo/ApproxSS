@@ -3,12 +3,13 @@
 
 #include "range.h"
 #include "period-log.h"
+#include "buffer-interface.h"
 
 template<bool isPrecise = false>
 using BufferLogs = std::map<size_t, std::unique_ptr<const PeriodLog<isPrecise>>>;
 
 template <bool isPrecise = false>
-class TrackingBuffer : public SizedRange {
+class TrackingBuffer : public SizedRange, public BufferInterface {
     protected:
 		const int64_t m_id;
 		int32_t m_isActive;
@@ -36,7 +37,7 @@ class TrackingBuffer : public SizedRange {
         virtual void NextPeriod(const int64_t period);
 		virtual void ReactivateBuffer(const int64_t creationPeriod);
 		virtual bool RetireBuffer(const bool giveAwayRecords) = 0; //return true if it's retired
-        
+
 		virtual void HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		virtual void HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;
 		virtual void HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) = 0;

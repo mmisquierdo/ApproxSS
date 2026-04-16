@@ -112,7 +112,7 @@ $(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buf
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
-$(OBJDIR)precise-buffer$(OBJ_SUFFIX): precise-buffer.cpp precise-buffer.h tracking-buffer.h range.h compiling-options.h
+$(OBJDIR)precise-buffer$(OBJ_SUFFIX): precise-buffer.cpp precise-buffer.h tracking-buffer.h buffer-interface.h range.h compiling-options.h
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
@@ -144,5 +144,5 @@ $(OBJDIR)access-handler$(OBJ_SUFFIX): access-handler.cpp access-handler.h pintoo
 	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
-$(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) range.h $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)tracking-buffer$(OBJ_SUFFIX) tracking-buffer.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)precise-buffer$(OBJ_SUFFIX) precise-buffer.h $(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX) approximate-buffer-map-record.h $(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX) approximate-buffer-array-record.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h $(OBJDIR)approx-globals$(OBJ_SUFFIX) approx-globals.h $(OBJDIR)thread-control$(OBJ_SUFFIX) thread-control.h $(OBJDIR)pintool-control$(OBJ_SUFFIX) pintool-control.h $(OBJDIR)access-handler$(OBJ_SUFFIX) access-handler.h
+$(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) range.h $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)tracking-buffer$(OBJ_SUFFIX) tracking-buffer.h buffer-interface.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)precise-buffer$(OBJ_SUFFIX) precise-buffer.h $(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX) approximate-buffer-map-record.h $(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX) approximate-buffer-array-record.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h $(OBJDIR)approx-globals$(OBJ_SUFFIX) approx-globals.h $(OBJDIR)thread-control$(OBJ_SUFFIX) thread-control.h $(OBJDIR)pintool-control$(OBJ_SUFFIX) pintool-control.h $(OBJDIR)access-handler$(OBJ_SUFFIX) access-handler.h
 	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wpedantic -Ofast -flto=auto $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
