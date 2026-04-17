@@ -294,13 +294,14 @@ void ApproximateBufferArrayRecord::ProcessReadMemoryElement(const size_t element
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
 	
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	const size_t accessedElementCount = accessSize / this->m_dataSizeInBytes;
 	const size_t endElementIndex = firstElementIndex + accessedElementCount;
 
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
 	if (shouldInject) {
@@ -328,10 +329,11 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementSafe(uint8_t * 
 }
 
 void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes);
 
 	const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 
 	if (shouldInject) {
@@ -344,9 +346,10 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t 
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
-
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
+
 	const uint8_t newStatus = (shouldInject ? ErrorStatus::Write : ErrorStatus::None);
 	
 	if (shouldInject) {
@@ -364,13 +367,13 @@ void ApproximateBufferArrayRecord::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPE
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread)); 
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
 	
 	const size_t firstElementIndex = this->GetIndexFromAddress(initialAddress);
 	uint8_t* currentAddress = initialAddress;
 	uint8_t const * const finalAddress = initialAddress + accessSize;
-
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread)); 
 
 	for (size_t currentElementIndex = firstElementIndex; currentAddress < finalAddress; ++currentElementIndex, currentAddress += this->m_dataSizeInBytes) {
 		this->ProcessReadMemoryElement(currentElementIndex, currentAddress, shouldInject);
@@ -398,10 +401,11 @@ void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementSafe(uint8_t * c
 }
 
 void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes);
 
 	const size_t elementIndex = this->GetIndexFromAddress(accessedAddress);
-	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
 
 	this->ProcessReadMemoryElement(elementIndex, accessedAddress, shouldInject);
 
@@ -414,9 +418,9 @@ void ApproximateBufferArrayRecord::HandleMemoryReadSingleElementUnsafe(uint8_t *
 
 //WAS LOCKED
 void ApproximateBufferArrayRecord::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
-
 	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes * memOpInfo->NumOfElements());
 
 	for (UINT32 i = 0; i < memOpInfo->NumOfElements(); ++i) {
 		uint8_t * const accessedAddress = (uint8_t*) memOpInfo->ElementAddress(i);

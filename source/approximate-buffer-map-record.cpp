@@ -243,7 +243,9 @@ void ApproximateBufferMapRecord::InvalidateRemainingRead(uint8_t * const initial
 
 //WAS LOCKED
 void ApproximateBufferMapRecord::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
 
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 
@@ -253,7 +255,7 @@ void ApproximateBufferMapRecord::HandleMemoryWriteSIMD(uint8_t * const initialAd
 		this->UpdateLastAccessPeriod(initialAddress);
 	#endif
 	
-	if (this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {
+	if (shouldInject) {
 		PendingWrites::const_iterator hint = this->m_pendingWrites.lower_bound(initialAddress);
 		for (uint8_t* currentAddress = initialAddress; currentAddress < finalAddress; currentAddress += this->m_dataSizeInBytes) {
 			this->RecordFaultyWrite(currentAddress, hint);
@@ -278,7 +280,9 @@ void ApproximateBufferMapRecord::HandleMemoryWriteSingleElementSafe(uint8_t * co
 
 //WAS LOCKED
 void ApproximateBufferMapRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, this->m_dataSizeInBytes);
 
 	this->InvalidateRemainingRead(accessedAddress);
 
@@ -286,7 +290,7 @@ void ApproximateBufferMapRecord::HandleMemoryWriteSingleElementUnsafe(uint8_t * 
 		this->UpdateLastAccessPeriod(accessedAddress);
 	#endif
 
-	if (this->GetShouldInject(ErrorCategory::Write, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {
+	if (shouldInject) {
 		PendingWrites::const_iterator hint = this->m_pendingWrites.lower_bound(accessedAddress);
 		this->RecordFaultyWrite(accessedAddress, hint);
 	}
@@ -312,7 +316,9 @@ void ApproximateBufferMapRecord::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERA
 
 //WAS LOCKED
 void ApproximateBufferMapRecord::HandleMemoryReadSIMD(uint8_t * const initialAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
 	
 	uint8_t const * const finalAddress = initialAddress + accessSize;
 	
@@ -324,7 +330,7 @@ void ApproximateBufferMapRecord::HandleMemoryReadSIMD(uint8_t * const initialAdd
 		this->ApplyPassiveFault(initialAddress, finalAddress);
 	#endif
 
-	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {	
+	if (shouldInject) {	
 		#if !DISTANCE_BASED_FAULT_INJECTOR
 			#if LSB_DROPPING
 			 	if (this->m_faultInjector.HasLSBDropping()) {
@@ -380,7 +386,9 @@ void ApproximateBufferMapRecord::HandleMemoryReadSingleElementSafe(uint8_t * con
 
 //MUST LOCK
 void ApproximateBufferMapRecord::HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-	this->m_periodLog.IncreaseAccess(isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes);
+	const bool shouldInject = this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread));
+	
+	this->m_periodLog.IncreaseAccess(shouldInject IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, this->m_dataSizeInBytes);
 
 	this->m_readHint = this->ReverseFaultyRead(accessedAddress IF_COMMA_LSBDROPPED(false));
 
@@ -390,7 +398,7 @@ void ApproximateBufferMapRecord::HandleMemoryReadSingleElementUnsafe(uint8_t * c
 		this->ApplyPassiveFault(accessedAddress);
 	#endif
 
-	if (this->GetShouldInject(ErrorCategory::Read, isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(isBufferInThread))) {
+	if (shouldInject) {
 		if (this->m_readHint != this->m_remainingReads.cbegin()) {	
 			this->m_readHint--;
 		}	
