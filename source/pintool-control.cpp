@@ -109,7 +109,7 @@ namespace PintoolControl {
 
             if ((lbGeneral != PintoolControl::generalBuffers.cend()) && !(PintoolControl::generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
                 #if MULTIPLE_ACTIVE_BUFFERS
-                    ChosenTermApproximateBuffer* const approxBuffer = lbGeneral->second.get();
+                    BufferInterface* const approxBuffer = lbGeneral->second.get();
                     approxBuffer->ReactivateBuffer(g_currentPeriod);
                     lbActiveMain = mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});
                 #else
@@ -124,12 +124,12 @@ namespace PintoolControl {
                     PIN_ExitProcess(EXIT_FAILURE);
                 }
 
-                ChosenTermApproximateBuffer* approxBuffer;
+                BufferInterface* approxBuffer;
 
                 if (isPrecise) {
                     approxBuffer = new PreciseBuffer(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
                 } else {
-                    approxBuffer = new ApproximateBufferArrayRecord(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
+                    approxBuffer = new ChosenTermApproximateBuffer(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
                 }
 
                 #if MULTIPLE_ACTIVE_BUFFERS
@@ -138,7 +138,7 @@ namespace PintoolControl {
                     mainThread.m_activeBuffer = approxBuffer;
                 #endif
 
-                PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<ChosenTermApproximateBuffer>(approxBuffer));
+                PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<BufferInterface>(approxBuffer));
             }
         } 
         #if !PIN_LOCKED
@@ -154,7 +154,7 @@ namespace PintoolControl {
                 #if MULTIPLE_ACTIVE_BUFFERS
                     const ActiveBuffers::const_iterator lbActiveLocal = localThread.m_activeBuffers.lower_bound(range);
                     if (!((lbActiveLocal != localThread.m_activeBuffers.cend()) && !(localThread.m_activeBuffers.key_comp()(range, lbActiveLocal->first)))) { 
-                        ChosenTermApproximateBuffer* const approxBuffer = lbActiveMain->second;
+                        BufferInterface* const approxBuffer = lbActiveMain->second;
                         approxBuffer->ReactivateBuffer(g_currentPeriod);
                         localThread.m_activeBuffers.insert(lbActiveLocal, {range, approxBuffer});
                     }

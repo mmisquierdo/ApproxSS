@@ -15,7 +15,7 @@ ThreadControl::ThreadControl(const THREADID threadId) : m_threadId(threadId) {
 ThreadControl::~ThreadControl() {
     #if MULTIPLE_ACTIVE_BUFFERS
         for (ActiveBuffers::const_iterator it = this->m_activeBuffers.cbegin(); it != this->m_activeBuffers.cend(); ) { 
-            ChosenTermApproximateBuffer& approxBuffer = *(it->second);
+            BufferInterface& approxBuffer = *(it->second);
             approxBuffer.RetireBuffer(false);
             it = this->m_activeBuffers.erase(it);
         }

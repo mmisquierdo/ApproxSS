@@ -21,13 +21,13 @@ typedef std::array<uint64_t, AccessTypes::Size> AccessCounter;
 typedef std::map<int64_t, std::pair<AccessCounter, std::vector<int64_t>>> LayeredAccess; //<hash, <counter, layer list>>
 
 #if LONG_TERM_BUFFER
-    typedef BufferInterface ChosenTermApproximateBuffer;
+    typedef ApproximateBufferArrayRecord ChosenTermApproximateBuffer;
 #else
     typedef ApproximateBufferMapRecord ChosenTermApproximateBuffer;
 #endif
 
 typedef std::tuple<uint8_t const *, uint8_t const *, int64_t, int64_t, size_t, bool> GeneralBufferRecord; //<Range, BufferId, ConfigurationId, dataSizeInBytes, isPrecise>
-typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximateBuffer>> GeneralBuffers; 
+typedef std::map<GeneralBufferRecord, const std::unique_ptr<BufferInterface>> GeneralBuffers; 
 
 #if MULTIPLE_ACTIVE_BUFFERS
     /*struct RangeCompare {
@@ -36,7 +36,7 @@ typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximat
             return lhv.m_finalAddress < rhv.m_initialAddress;
         } 
     };*/
-    typedef std::map<Range, ChosenTermApproximateBuffer* /*, RangeCompare*/> ActiveBuffers;
+    typedef std::map<Range, BufferInterface* /*, RangeCompare*/> ActiveBuffers;
 #endif
 
 // --- Macros ---

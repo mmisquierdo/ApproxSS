@@ -12,7 +12,7 @@ class ThreadControl {
         #if MULTIPLE_ACTIVE_BUFFERS
             ActiveBuffers m_activeBuffers;
         #else
-            ChosenTermApproximateBuffer* m_activeBuffer;
+            BufferInterface* m_activeBuffer;
         #endif
 
         ThreadControl(const THREADID threadId);
