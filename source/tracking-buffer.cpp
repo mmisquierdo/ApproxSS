@@ -45,7 +45,7 @@ int64_t TrackingBuffer<isPrecise>::GetBufferId() const {
 //MUST LOCK
 template <bool isPrecise>
 void TrackingBuffer<isPrecise>::StoreCurrentPeriodLog() {
-	this->m_bufferLogs.emplace(this->m_periodLog.m_period, std::make_unique<const PeriodLog<isPrecise>>(this->m_periodLog, this->GetBitDepth()));
+	this->m_bufferLogs[this->m_periodLog.m_period] = std::make_unique<PeriodLog<isPrecise>>(this->m_periodLog, this->GetBitDepth());
 }
 
 //WAS LOCKED
@@ -59,6 +59,7 @@ template <bool isPrecise>
 void TrackingBuffer<isPrecise>::ResetOrRestorePeriodLog(const int64_t period) { //TODO: FIX? THIS IS PROBABLY WRONG, ITS CONSIDERING LINEAR PERIODS I THINK
     const auto it = this->m_bufferLogs.find(period);
 	if (it != this->m_bufferLogs.cend()) {
+		this->m_periodLog = PeriodLog<isPrecise>(*(it->second.get()), this->GetBitDepth());
 		this->m_bufferLogs.erase(it);
 	} else {
 		this->m_periodLog.ResetCounts(period, this->GetBitDepth());
@@ -66,7 +67,7 @@ void TrackingBuffer<isPrecise>::ResetOrRestorePeriodLog(const int64_t period) { 
 }
 
 //MUST LOCK
-//AND m_isActive MUST BE CHECKED
+//AND m_isActive MUST BE CHECKED!!!
 template <bool isPrecise>
 void TrackingBuffer<isPrecise>::ReactivateBuffer(const int64_t creationPeriod) {
     this->ResetOrRestorePeriodLog(creationPeriod);
@@ -77,6 +78,7 @@ void TrackingBuffer<isPrecise>::WriteLogHeaderToFile(std::ofstream& outputLog, c
 	const std::string padding = basePadding + '\t';
 	outputLog << basePadding << "Buffer {" << std::endl;
 	outputLog << padding << "Id: " << this->m_id << std::endl;
+	outputLog << padding << "Precision: " << (isPrecise ? "Precise" : "Approximate") << std::endl;
 	outputLog << padding << "Initial Address: " << (size_t) this->m_initialAddress << std::endl;	//static_cast<size_t>
 	outputLog << padding << "Final Address: " << (size_t) this->m_finalAddress << std::endl;		//static_cast<size_t>
 	outputLog << padding << "Configuration Id: " << this->GetConfigurationId() << std::endl;

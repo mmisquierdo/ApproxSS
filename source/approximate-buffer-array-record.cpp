@@ -271,16 +271,6 @@ void ApproximateBufferArrayRecord::ProcessReadMemoryElement(const size_t element
 			break;
 	}
 
-	/*if (currentErrorStatus) {
-		if ((currentErrorStatus & ErrorStatus::Read)) {
-			this->ReverseFaultyRead(elementIndex, accessedAddress);
-			currentErrorStatus = ErrorStatus::None;
-		} else {
-			this->ApplyWriteFault(elementIndex, accessedAddress);
-			currentErrorStatus = ErrorStatus::None;
-		}
-	}*/
-
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		this->ApplyPassiveFault(elementIndex, accessedAddress);
 	#endif

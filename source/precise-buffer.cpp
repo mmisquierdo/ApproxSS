@@ -32,6 +32,14 @@ bool PreciseBuffer::RetireBuffer(const bool giveAwayRecords) {
 	}
 }
 
+void PreciseBuffer::ReactivateBuffer(const int64_t creationPeriod) {
+	if (this->m_isActive == 0) {
+		TrackingBuffer<true>::ReactivateBuffer(creationPeriod);
+	}
+
+	this->m_isActive++;
+}
+
 const InjectionConfigurationReference& PreciseBuffer::GetInjectionConfigurationReference() const {
     const auto it = g_injectorConfigurations.find(this->GetConfigurationId()); //WARNING: this also may crash the tool, but it should have crashed before
 
@@ -43,7 +51,7 @@ void PreciseBuffer::HandleMemoryWriteSIMD(uint8_t * const initialAddress, const 
 }
 
 void PreciseBuffer::HandleMemoryWriteSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-    this->m_periodLog.IncreaseAccess(false IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
+	this->m_periodLog.IncreaseAccess(false IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Write, accessSize);
 }
 
 void PreciseBuffer::HandleMemoryWriteScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
@@ -55,7 +63,7 @@ void PreciseBuffer::HandleMemoryReadSIMD(uint8_t * const initialAddress, const u
 }
 
 void PreciseBuffer::HandleMemoryReadSingleElementSafe(uint8_t * const accessedAddress, const uint32_t accessSize, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {
-    this->m_periodLog.IncreaseAccess(false IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
+	this->m_periodLog.IncreaseAccess(false IF_COMMA_PIN_LOCKED(isBufferInThread), AccessTypes::Read, accessSize);
 }
 
 void PreciseBuffer::HandleMemoryReadScattered(IMULTI_ELEMENT_OPERAND const * const memOpInfo, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) {

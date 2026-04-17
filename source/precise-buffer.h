@@ -24,6 +24,7 @@ class PreciseBuffer : virtual public TrackingBuffer<true> {
         size_t GetBitDepth() const override;
 
 		bool RetireBuffer(const bool giveAwayRecords) override; //return true if it's retired
+		void ReactivateBuffer(const int64_t creationPeriod) override;
 
 		const InjectionConfigurationReference& GetInjectionConfigurationReference() const override;
 

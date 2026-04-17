@@ -90,7 +90,7 @@ namespace PintoolControl {
         IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
     }
 
-    VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint32_t dataSizeInBytes) {
+    VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint64_t dataSizeInBytes, const int64_t isPrecise) {
         const Range range = Range(start_address, end_address-1);
         
         ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
@@ -104,7 +104,7 @@ namespace PintoolControl {
             if (mainThread.m_activeBuffer == nullptr)
         #endif
         {
-            const GeneralBufferRecord generalBufferKey = std::make_tuple(range.m_initialAddress, range.m_finalAddress, bufferId, configurationId, dataSizeInBytes);
+            const GeneralBufferRecord generalBufferKey = std::make_tuple(range.m_initialAddress, range.m_finalAddress, bufferId, configurationId, dataSizeInBytes, isPrecise);
             const GeneralBuffers::const_iterator lbGeneral = PintoolControl::generalBuffers.lower_bound(generalBufferKey);
 
             if ((lbGeneral != PintoolControl::generalBuffers.cend()) && !(PintoolControl::generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
@@ -124,7 +124,13 @@ namespace PintoolControl {
                     PIN_ExitProcess(EXIT_FAILURE);
                 }
 
-                ChosenTermApproximateBuffer* const approxBuffer = new ApproximateBufferArrayRecord(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
+                ChosenTermApproximateBuffer* approxBuffer;
+
+                if (isPrecise) {
+                    approxBuffer = new PreciseBuffer(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
+                } else {
+                    approxBuffer = new ApproximateBufferArrayRecord(range, bufferId, g_currentPeriod, dataSizeInBytes, *bcIt->second);
+                }
 
                 #if MULTIPLE_ACTIVE_BUFFERS
                     lbActiveMain = mainThread.m_activeBuffers.insert(lbActiveMain, {range, approxBuffer});

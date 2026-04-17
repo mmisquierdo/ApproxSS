@@ -12,6 +12,7 @@
 #include "compiling-options.h"
 #include "configuration-input.h"
 #include "approximate-buffer.h"
+#include "precise-buffer.h"
 #include "approximate-buffer-map-record.h"
 #include "approximate-buffer-array-record.h"
 
@@ -20,12 +21,12 @@ typedef std::array<uint64_t, AccessTypes::Size> AccessCounter;
 typedef std::map<int64_t, std::pair<AccessCounter, std::vector<int64_t>>> LayeredAccess; //<hash, <counter, layer list>>
 
 #if LONG_TERM_BUFFER
-    typedef ApproximateBufferArrayRecord ChosenTermApproximateBuffer;
+    typedef BufferInterface ChosenTermApproximateBuffer;
 #else
     typedef ApproximateBufferMapRecord ChosenTermApproximateBuffer;
 #endif
 
-typedef std::tuple<uint8_t const *, uint8_t const *, int64_t, int64_t, size_t> GeneralBufferRecord; //<Range, BufferId, ConfigurationId, dataSizeInBytes>
+typedef std::tuple<uint8_t const *, uint8_t const *, int64_t, int64_t, size_t, bool> GeneralBufferRecord; //<Range, BufferId, ConfigurationId, dataSizeInBytes, isPrecise>
 typedef std::map<GeneralBufferRecord, const std::unique_ptr<ChosenTermApproximateBuffer>> GeneralBuffers; 
 
 #if MULTIPLE_ACTIVE_BUFFERS
