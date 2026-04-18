@@ -11,41 +11,28 @@ namespace PintoolControl {
     #endif
 
     VOID enable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
-        std::cout << ">enable_global_injection" << std::endl;
-
         #if PIN_LOCKED
             ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId))); 
         #else
             ThreadControl& tdata = PintoolControl::g_mainThreadControl;
         #endif
         tdata.m_injectionEnabled = true;
-
-        std::cout << "<enable_global_injection" << std::endl;
     }
 
     VOID disable_global_injection(IF_PIN_LOCKED(const THREADID threadId)) {
-        std::cout << ">disable_global_injection" << std::endl;
-
         #if PIN_LOCKED
             ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
         #else
             ThreadControl& tdata = PintoolControl::g_mainThreadControl;
         #endif
         tdata.m_injectionEnabled = false;
-
-        std::cout << "<disable_global_injection" << std::endl;
     }
 
     VOID disable_access_instrumentation() {
-        std::cout << ">disable_access_instrumentation" << std::endl;
         SET_ACCESS_INSTRUMENTATION_STATUS(false)
-
-        std::cout << "<disable_access_instrumentation" << std::endl;
     }
 
     VOID start_level(IF_PIN_LOCKED_COMMA(const THREADID threadId) const int64_t level) {
-        std::cout << ">start_level, level: " << level << std::endl;
-
         #if PIN_LOCKED
             ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
         #else
@@ -62,13 +49,9 @@ namespace PintoolControl {
         g_layerHashes.push(g_sequenceHash);
         g_levels.push_back(level);
         g_sequenceHash = HashValue(level, g_sequenceHash);
-
-        std::cout << "<start_level" << std::endl;
     }
 
     VOID end_level(IF_PIN_LOCKED(const THREADID threadId)) {
-        std::cout << ">end_level" << std::endl;
-
         #if PIN_LOCKED
             ThreadControl& tdata = *(static_cast<ThreadControl*>(PIN_GetThreadData(g_tlsKey, threadId)));
         #else
@@ -85,13 +68,9 @@ namespace PintoolControl {
         g_sequenceHash = g_layerHashes.top();
         g_layerHashes.pop();
         g_levels.pop_back();
-
-        std::cout << "<end_level" << std::endl;
     }
 
     VOID next_period(const bool isLinearIncrement, const int64_t orNewSetValue) {
-        std::cout << ">next_period, isLinearIncrement: " << isLinearIncrement << ", orNewSetValue: " << orNewSetValue << std::endl;
-
         IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
         if (isLinearIncrement) {
@@ -100,7 +79,6 @@ namespace PintoolControl {
             if (g_currentPeriod != orNewSetValue) {
                 g_currentPeriod = orNewSetValue;
             } else {
-                std::cout << "<next_period" << std::endl;
                 return;
             }            
         }
@@ -118,13 +96,9 @@ namespace PintoolControl {
         #endif
 
         IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
-
-        std::cout << "<next_period" << std::endl;
     }
 
     VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const size_t dataSizeInBytes, const bool isPrecise) {
-        std::cout << ">add_approx, start_address: " << (size_t) start_address << ", end_address: " << (size_t) end_address << ", bufferId: " << bufferId << ", configurationId: " << configurationId << ", dataSizeInBytes: " << dataSizeInBytes << ", isPrecise: " << isPrecise << std::endl;
-        
         const Range range = Range(start_address, end_address-1);
         
         ThreadControl& mainThread = PintoolControl::g_mainThreadControl;
@@ -205,13 +179,9 @@ namespace PintoolControl {
         }
 
         IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
-
-        std::cout << "<add_approx" << std::endl;
     }
 
     VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords) {
-        std::cout << ">remove_approx, start_address: " << (size_t) start_address << ", end_address: " << (size_t) end_address << ", giveAwayRecords: " << giveAwayRecords  << std::endl;
-
         const Range range = Range(start_address, end_address-1);
         ThreadControl& mainThread = PintoolControl::g_mainThreadControl;    
 
@@ -260,8 +230,6 @@ namespace PintoolControl {
         #endif
 
         IF_PIN_LOCKED(PIN_ReleaseLock(&g_pinLock);)
-
-        std::cout << "<remove_approx" << std::endl;
     }
 
     #if PIN_LOCKED
