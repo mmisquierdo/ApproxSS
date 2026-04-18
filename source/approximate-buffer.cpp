@@ -1,7 +1,7 @@
 #include "approximate-buffer.h"
 
 //WAS LOCKED
-ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
+ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
 	TrackingBuffer<false>(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg.GetBitDepth(), injectorCfg.GetConfigurationId()),	
 
 	m_minimumReadBackupSize(static_cast<size_t>(std::ceil(static_cast<double>(injectorCfg.GetBitDepth()) / static_cast<double>(BYTE_SIZE)))),
@@ -16,13 +16,13 @@ ApproximateBuffer::ApproximateBuffer(const Range& bufferRange, const int64_t id,
 }
 
 //MUST LOCK
-void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
+void ApproximateBuffer::InitializeRecordsAndBackups(const int64_t period) {
 	#if ENABLE_PASSIVE_INJECTION
 		#if !DISTANCE_BASED_FAULT_INJECTOR
 			using namespace BorrowedMemory;
 			const LastAccessPeriodPool::iterator accessIt = g_lastAccessPeriodPool.find(this->GetNumberOfElements());
 			if (accessIt != g_lastAccessPeriodPool.cend()) {
-				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(accessIt->second.release());
+				this->m_lastAccessPeriod = std::unique_ptr<int64_t[]>(accessIt->second.release());
 				g_lastAccessPeriodPool.erase(accessIt);
 			
 
@@ -37,7 +37,7 @@ void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 				//this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>((uint64_t*) std::malloc(this->GetNumberOfElements() * sizeof(uint64_t))); "not supported" by Pin 4.0
 				//this->m_lastAccessPeriod = std::make_unique_for_overwrite<uint64_t[]>(this->GetNumberOfElements()); "not supported" by Pin 4.0, requires C++20
 				
-				this->m_lastAccessPeriod = std::unique_ptr<uint64_t[]>(new uint64_t[this->GetNumberOfElements()]);
+				this->m_lastAccessPeriod = std::unique_ptr<int64_t[]>(new int64_t[this->GetNumberOfElements()]);
 				std::fill_n(this->m_lastAccessPeriod.get(), this->GetNumberOfElements(), period);
 			}
 		#else
@@ -50,7 +50,7 @@ void ApproximateBuffer::InitializeRecordsAndBackups(const uint64_t period) {
 void ApproximateBuffer::GiveAwayRecordsAndBackups(const bool giveAwayRecords) {
 	#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
 		if (giveAwayRecords) {
-				BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<uint64_t[]>(this->m_lastAccessPeriod.release())});
+				BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<int64_t[]>(this->m_lastAccessPeriod.release())});
 			} else {
 				this->m_lastAccessPeriod.reset();
 			}
@@ -105,7 +105,7 @@ void ApproximateBuffer::NextPeriod(const int64_t period) {
 	//this->m_periodLog.ResetCounts(period, this->GetBitDepth());
 }
 
-uint64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
+int64_t ApproximateBuffer::GetCurrentPassiveBerMarker() const {
 	return g_currentPeriod;
 }
 
@@ -126,7 +126,7 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 	#if LOG_FAULTS
 		//MUST LOCK
 		uint64_t* ApproximateBuffer::GetPassiveErrorsLogFromIterator(const BufferLogs<false>::const_iterator& it) const {
-			if (it != this->m_bufferLogs.cend()) {
+			if (it != this->m_bufferLogs.cend()) { //TODO: CHECK m_periodLog FIRST!!!
 				return it->second->GetErrorCountsByBit(ErrorCategory::Passive);
 			} else {
 				return this->m_periodLog.GetErrorCountsByBit(ErrorCategory::Passive);
@@ -198,10 +198,10 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 
 		//MUST LOCK
 		void ApproximateBuffer::ApplyPassiveFault(const size_t elementIndex, uint8_t * const accessedAddress) {
-			const uint64_t currentMarker = this->GetCurrentPassiveBerMarker();
+			const int64_t currentMarker = this->GetCurrentPassiveBerMarker();
 			
 			#if OVERCHARGE_BER
-				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
+				int64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
 				
 				if (currentMarker > initialMarker) {
 					const auto& ber = this->m_faultInjector.GetBer(ErrorCategory::Passive, initialMarker, currentMarker);
@@ -217,7 +217,7 @@ const InjectionConfigurationReference& ApproximateBuffer::GetInjectionConfigurat
 					initialMarker = currentMarker;
 				}
 			#else
-				uint64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
+				int64_t& initialMarker = this->m_lastAccessPeriod[elementIndex];
 
 				#if LOG_FAULTS
 					BufferLogs<false>::const_iterator it = this->m_bufferLogs.find(initialMarker);

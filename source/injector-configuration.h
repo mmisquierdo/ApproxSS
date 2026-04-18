@@ -12,7 +12,7 @@
 
 #include "compiling-options.h"
 
-extern uint64_t g_currentPeriod;
+extern int64_t g_currentPeriod;
 
 #if DISTANCE_BASED_FAULT_INJECTOR
 	typedef std::pair<double, double> ErrorType; //<mean, std-dev>
@@ -132,7 +132,7 @@ class InjectionConfigurationLocal : public virtual InjectionConfigurationBase {
 			uint64_t GetCreationPeriod() const;
 			uint64_t GetBerIndex() const;
 			#if ENABLE_PASSIVE_INJECTION
-			uint64_t GetBerIndexFromPeriod(const uint64_t period) const;
+			uint64_t GetBerIndexFromPeriod(const int64_t period) const;
 			#endif
 			size_t GetBerCount(const size_t errorCat) const;
 

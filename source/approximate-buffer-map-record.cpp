@@ -4,7 +4,7 @@
 
 #include "approximate-buffer-map-record.h"
 
-ApproximateBufferMapRecord::ApproximateBufferMapRecord(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+ApproximateBufferMapRecord::ApproximateBufferMapRecord(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 													const InjectionConfigurationReference& injectorCfg) : 
 													ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg),
 													m_pendingWrites(), m_remainingReads(), m_readHint(IF_LSBDROPPED_ELSE(m_remainingReads.begin(), m_remainingReads.cbegin()))

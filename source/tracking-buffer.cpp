@@ -2,7 +2,7 @@
 #include "tracking-buffer.h"
 
 template <bool isPrecise>
-TrackingBuffer<isPrecise>::TrackingBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId) :
+TrackingBuffer<isPrecise>::TrackingBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId) :
     SizedRange(bufferRange, dataSizeInBytes),
 	m_id(id),
 	m_isActive(1),

@@ -8,7 +8,7 @@ LayeredAccess g_layeredAccesses;
 AccessCounter g_accessCounter{0};
 
 uint64_t g_injectionCalls = 0;
-uint64_t g_currentPeriod = 0;
+int64_t g_currentPeriod = 0;
 
 #if BUFFERS_LAYERED_COUNTER
     LayeredAccess g_buffersLayeredAccesses;

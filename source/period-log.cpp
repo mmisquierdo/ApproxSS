@@ -16,7 +16,7 @@ PeriodLog<isPrecise>::PeriodLog(PeriodLog<isPrecise> &other, const size_t bitDep
 }
 
 template <bool isPrecise>
-PeriodLog<isPrecise>::PeriodLog(const uint64_t period, const size_t bitDepth) {
+PeriodLog<isPrecise>::PeriodLog(const int64_t period, const size_t bitDepth) {
 	#if LOG_FAULTS
 		for (size_t i = 0; i < ErrorCategory::Size; ++i) {
 			this->m_errorsCountsByBit[i] = std::make_unique<uint64_t[]>(bitDepth);
@@ -27,7 +27,7 @@ PeriodLog<isPrecise>::PeriodLog(const uint64_t period, const size_t bitDepth) {
 }
 
 template <bool isPrecise>
-void PeriodLog<isPrecise>::ResetCounts(const uint64_t period, const size_t bitDepth) {
+void PeriodLog<isPrecise>::ResetCounts(const int64_t period, const size_t bitDepth) {
 	this->m_period = period;
 	this->m_accessedBytesCount.fill({});
 

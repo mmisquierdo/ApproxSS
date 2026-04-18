@@ -6,7 +6,7 @@
 #include "buffer-interface.h"
 
 template<bool isPrecise = false>
-using BufferLogs = std::map<size_t, std::unique_ptr<PeriodLog<isPrecise>>>;
+using BufferLogs = std::map<int64_t, std::unique_ptr<PeriodLog<isPrecise>>>;
 
 template <bool isPrecise = false>
 class TrackingBuffer : public SizedRange, public BufferInterface {
@@ -22,7 +22,7 @@ class TrackingBuffer : public SizedRange, public BufferInterface {
 		void CleanLogs();
 
     public:
-        TrackingBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId);
+        TrackingBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes, const size_t bitDepth, const int64_t configurationId);
         
         TrackingBuffer(const TrackingBuffer<isPrecise>&) = delete;
         

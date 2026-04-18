@@ -17,7 +17,7 @@ namespace PintoolControl {
     VOID disable_access_instrumentation();
     VOID start_level(IF_PIN_LOCKED_COMMA(const THREADID threadId) const int64_t level);
     VOID end_level(IF_PIN_LOCKED(const THREADID threadId));
-    VOID next_period();
+    VOID next_period(const int64_t isLinearIncrement, const int64_t orNewSetValue);
     VOID add_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const int64_t bufferId, const int64_t configurationId, const uint64_t dataSizeInBytes, const int64_t isPrecise);
     VOID remove_approx(IF_PIN_LOCKED_COMMA(const THREADID threadId) uint8_t * const start_address, uint8_t const * const end_address, const bool giveAwayRecords);
 

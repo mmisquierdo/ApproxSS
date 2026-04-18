@@ -281,7 +281,7 @@ const InjectionConfigurationReference& InjectionConfigurationLocal::GetReference
 		this->UpdateBers();
 	}
 
-	void InjectionConfigurationLocal::ResetBerIndex(const uint64_t newCreationPeriod) {
+	void InjectionConfigurationLocal::ResetBerIndex(const int64_t newCreationPeriod) {
 		//this->m_creationPeriod = newCreationPeriod;
 		this->UpdateBers();
 	}
@@ -314,7 +314,7 @@ const InjectionConfigurationReference& InjectionConfigurationLocal::GetReference
 	}
 
 	#if ENABLE_PASSIVE_INJECTION
-	//uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const uint64_t period) const {
+	//uint64_t InjectionConfigurationLocal::GetBerIndexFromPeriod(const int64_t period) const {
 	//	return period - this->GetCreationPeriod();
 	//}
 	#endif

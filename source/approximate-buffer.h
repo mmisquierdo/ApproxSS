@@ -23,7 +23,7 @@ class FaultInjector;
 
 //extern bool g_isGlobalInjectionEnabled;
 //extern int g_level;
-extern uint64_t g_currentPeriod;
+extern int64_t g_currentPeriod;
 
 class ApproximateBuffer : public TrackingBuffer<false> {
 	protected:
@@ -41,12 +41,12 @@ class ApproximateBuffer : public TrackingBuffer<false> {
 
 		#if ENABLE_PASSIVE_INJECTION
 			#if !DISTANCE_BASED_FAULT_INJECTOR
-				std::unique_ptr<uint64_t[]> m_lastAccessPeriod;
+				std::unique_ptr<int64_t[]> m_lastAccessPeriod;
 				void UpdateLastAccessPeriod(uint8_t const * const initialAddress, const uint32_t accessSize);
 				void UpdateLastAccessPeriod(uint8_t const * const accessedAddress);
 				void UpdateLastAccessPeriod(const size_t elementIndex);
 			#else
-				uint64_t m_lastPassiveInjectionPeriod; 
+				int64_t m_lastPassiveInjectionPeriod; 
 			#endif
 
 			void ApplyPassiveFault(const size_t elementIndex, uint8_t * const accessedAddress);
@@ -60,15 +60,15 @@ class ApproximateBuffer : public TrackingBuffer<false> {
 			#endif
 		#endif
 
-		virtual void InitializeRecordsAndBackups(const uint64_t period);
+		virtual void InitializeRecordsAndBackups(const int64_t period);
 		virtual void GiveAwayRecordsAndBackups(const bool giveAway);
 
-		uint64_t GetCurrentPassiveBerMarker() const;
+		int64_t GetCurrentPassiveBerMarker() const;
 		bool GetShouldInject(const size_t errorCat, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread)) const;
 		size_t GetTotalNecessaryReadBackupSize() const;
 
 	public:
-		ApproximateBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		ApproximateBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 						  const InjectionConfigurationReference& injectorCfg);
 
 		ApproximateBuffer(const ApproximateBuffer&) = delete;

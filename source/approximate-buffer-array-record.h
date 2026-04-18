@@ -79,7 +79,7 @@ class ApproximateBufferArrayRecord : public ApproximateBuffer {
 
 		uint8_t* GetBackupAddressFromIndex(const size_t index) const;
 
-		void InitializeRecordsAndBackups(const uint64_t period) override;
+		void InitializeRecordsAndBackups(const int64_t period) override;
 		void GiveAwayRecordsAndBackups(const bool giveAway) override;
 
 
@@ -97,7 +97,7 @@ class ApproximateBufferArrayRecord : public ApproximateBuffer {
 		void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 
 	public:
-		ApproximateBufferArrayRecord(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		ApproximateBufferArrayRecord(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 								const InjectionConfigurationReference& injectorCfg);
 
 		ApproximateBufferArrayRecord(const ApproximateBufferArrayRecord&) = delete;

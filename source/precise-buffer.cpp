@@ -4,7 +4,7 @@ PreciseBuffer::~PreciseBuffer() {
     TrackingBuffer::~TrackingBuffer();
 }
 
-PreciseBuffer::PreciseBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
+PreciseBuffer::PreciseBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes, const InjectionConfigurationReference& injectorCfg) : 
 	TrackingBuffer<true>(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg.GetBitDepth(), injectorCfg.GetConfigurationId()),	
     m_configurationId(injectorCfg.GetConfigurationId()),
     m_bitDepth(injectorCfg.GetBitDepth()) {}

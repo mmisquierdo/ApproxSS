@@ -57,7 +57,7 @@ extern LayeredAccess g_layeredAccesses;
 extern AccessCounter g_accessCounter;
 
 extern uint64_t g_injectionCalls;
-extern uint64_t g_currentPeriod;
+extern int64_t g_currentPeriod;
 
 #if BUFFERS_LAYERED_COUNTER
     extern LayeredAccess g_buffersLayeredAccesses;

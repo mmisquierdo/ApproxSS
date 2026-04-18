@@ -20,13 +20,10 @@ namespace BorrowedMemory {
 }
 
 //WAS LOCKED
-ApproximateBufferArrayRecord::ApproximateBufferArrayRecord(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+ApproximateBufferArrayRecord::ApproximateBufferArrayRecord(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 						  	const InjectionConfigurationReference& injectorCfg) : 
-							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {
-	
-	
+							ApproximateBuffer(bufferRange, id, creationPeriod, dataSizeInBytes, injectorCfg) {	
 	this->InitializeRecordsAndBackups(creationPeriod);
-	
 }
 
 //WAS LOCKED (INDIRECTLY)
@@ -36,7 +33,7 @@ ApproximateBufferArrayRecord::~ApproximateBufferArrayRecord() {
 }
 
 //MUST LOCK
-void ApproximateBufferArrayRecord::InitializeRecordsAndBackups(const uint64_t period) {
+void ApproximateBufferArrayRecord::InitializeRecordsAndBackups(const int64_t period) {
 	this->m_lowestInjectedElement = this->GetIndexFromAddress(this->m_finalAddress); // should generate a valid (non-crashing) element
 	this->m_highestInjectedElement = this->GetIndexFromAddress(this->m_initialAddress);
 
@@ -87,7 +84,7 @@ void ApproximateBufferArrayRecord::GiveAwayRecordsAndBackups(const bool giveAway
 		#endif
 
 		#if ENABLE_PASSIVE_INJECTION && !DISTANCE_BASED_FAULT_INJECTOR
-			BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<uint64_t[]>(this->m_lastAccessPeriod.release())});
+			BorrowedMemory::g_lastAccessPeriodPool.insert({this->GetNumberOfElements(), std::unique_ptr<int64_t[]>(this->m_lastAccessPeriod.release())});
 		#endif
 
 	} else {

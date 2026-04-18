@@ -70,10 +70,18 @@ namespace PintoolControl {
         g_levels.pop_back();
     }
 
-    VOID next_period() {
+    VOID next_period(const int64_t isLinearIncrement, const int64_t orNewSetValue) {
         IF_PIN_LOCKED(PIN_GetLock(&g_pinLock, -1);)
 
-        ++g_currentPeriod;
+        if (isLinearIncrement) {
+            ++g_currentPeriod;
+        } else {
+            if (g_currentPeriod != orNewSetValue) {
+                g_currentPeriod = orNewSetValue;
+            } else {
+                return;
+            }            
+        }
 
         ThreadControl& tdata = PintoolControl::g_mainThreadControl;
 

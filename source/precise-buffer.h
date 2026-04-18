@@ -12,7 +12,7 @@ class PreciseBuffer : virtual public TrackingBuffer<true> {
 		const size_t m_bitDepth;
 
 	public:
-		PreciseBuffer(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		PreciseBuffer(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 					  const InjectionConfigurationReference& injectorCfg);
 
 		PreciseBuffer(const PreciseBuffer&) = delete;

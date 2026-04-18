@@ -82,7 +82,7 @@ class ApproximateBufferMapRecord : public ApproximateBuffer {
 		void HandleMemoryReadSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 		void HandleMemoryWriteSingleElementUnsafe(uint8_t * const accessedAddress, const bool isThreadInjectionEnabled IF_COMMA_PIN_LOCKED(const bool isBufferInThread));
 	public:
-		ApproximateBufferMapRecord(const Range& bufferRange, const int64_t id, const uint64_t creationPeriod, const size_t dataSizeInBytes,
+		ApproximateBufferMapRecord(const Range& bufferRange, const int64_t id, const int64_t creationPeriod, const size_t dataSizeInBytes,
 									const InjectionConfigurationReference& injectorCfg);
 		~ApproximateBufferMapRecord();
 
