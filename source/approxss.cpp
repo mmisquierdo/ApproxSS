@@ -270,7 +270,7 @@ namespace PintoolOutput {
 			PintoolControl::threadControlMap.clear();
 		#endif
 
-		PintoolControl::generalBuffers.clear();
+		PintoolControl::g_generalBuffers.clear();
 
 		g_injectorConfigurations.clear();
 	}
@@ -335,7 +335,7 @@ namespace PintoolOutput {
 		std::array<std::array<uint64_t, AccessTypes::Size>, AccessPrecision::Size> totalTargetAccessesBytes;
 		std::fill_n(&(totalTargetAccessesBytes[0][0]), AccessPrecision::Size * AccessTypes::Size, 0);
 
-		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
+		for (const auto& [_, approxBuffer] : PintoolControl::g_generalBuffers) { 
 			approxBuffer->WriteAccessLogToFile(PintoolOutput::accessLog, totalTargetAccessesBytes, totalTargetInjections);
 		}
 
@@ -383,7 +383,7 @@ namespace PintoolOutput {
 		//PintoolOutput::energyConsumptionLog.setf(std::ios::fixed);
 		//PintoolOutput::energyConsumptionLog.precision(2);
 
-		for (const auto& [_, approxBuffer] : PintoolControl::generalBuffers) { 
+		for (const auto& [_, approxBuffer] : PintoolControl::g_generalBuffers) { 
 			const int64_t configurationId = approxBuffer->GetConfigurationId();
 			const ConsumptionProfileMap::const_iterator profileIt = g_consumptionProfiles.find(configurationId);
 

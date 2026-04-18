@@ -5,7 +5,7 @@
 #include "thread-control.h"
 
 namespace PintoolControl {
-    extern GeneralBuffers generalBuffers;
+    extern GeneralBuffers g_generalBuffers;
     extern ThreadControl g_mainThreadControl;
 
     #if PIN_LOCKED 

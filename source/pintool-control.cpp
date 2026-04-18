@@ -2,7 +2,7 @@
 #include <iostream>
 
 namespace PintoolControl {
-    GeneralBuffers generalBuffers;
+    GeneralBuffers g_generalBuffers;
     ThreadControl g_mainThreadControl(-1);
 
     #if PIN_LOCKED 
@@ -105,9 +105,9 @@ namespace PintoolControl {
         #endif
         {
             const GeneralBufferRecord generalBufferKey = std::make_tuple(range.m_initialAddress, range.m_finalAddress, bufferId, configurationId, dataSizeInBytes, isPrecise);
-            const GeneralBuffers::const_iterator lbGeneral = PintoolControl::generalBuffers.lower_bound(generalBufferKey);
+            const GeneralBuffers::const_iterator lbGeneral = PintoolControl::g_generalBuffers.lower_bound(generalBufferKey);
 
-            if ((lbGeneral != PintoolControl::generalBuffers.cend()) && !(PintoolControl::generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
+            if ((lbGeneral != PintoolControl::g_generalBuffers.cend()) && !(PintoolControl::g_generalBuffers.key_comp()(generalBufferKey, lbGeneral->first))) {
                 #if MULTIPLE_ACTIVE_BUFFERS
                     BufferInterface* const approxBuffer = lbGeneral->second.get();
                     approxBuffer->ReactivateBuffer(g_currentPeriod);
@@ -138,7 +138,7 @@ namespace PintoolControl {
                     mainThread.m_activeBuffer = approxBuffer;
                 #endif
 
-                PintoolControl::generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<BufferInterface>(approxBuffer));
+                PintoolControl::g_generalBuffers.emplace_hint(lbGeneral, generalBufferKey, std::unique_ptr<BufferInterface>(approxBuffer));
             }
         } 
         #if !PIN_LOCKED
