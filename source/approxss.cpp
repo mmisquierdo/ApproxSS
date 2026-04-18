@@ -166,10 +166,6 @@ namespace TargetInstrumentation {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::enable_global_injection, 
 							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 3, 
 							IARG_END);
 			RTN_Close(rtn);
 			SET_ACCESS_INSTRUMENTATION_STATUS(true)
@@ -180,11 +176,6 @@ namespace TargetInstrumentation {
 			RTN_Open(rtn);
 			RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_global_injection,  
 							IF_PIN_LOCKED_COMMA(IARG_THREAD_ID)
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-							IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
 							IARG_END);
 			RTN_Close(rtn);
 			SET_ACCESS_INSTRUMENTATION_STATUS(true)
@@ -194,14 +185,7 @@ namespace TargetInstrumentation {
 		#if NARROW_ACCESS_INSTRUMENTATION
 			if (rtnName.find("disable_access_instrumentation") != std::string::npos) {
 				RTN_Open(rtn);
-				RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation,  
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 0, 
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 3,
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 4,
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 5,
-								IARG_FUNCARG_ENTRYPOINT_VALUE, 6, 
+				RTN_InsertCall(	rtn, IPOINT_BEFORE, (AFUNPTR)PintoolControl::disable_access_instrumentation, 
 								IARG_END);
 				RTN_Close(rtn);
 				return;
