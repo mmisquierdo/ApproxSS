@@ -216,7 +216,7 @@ namespace PintoolOutput {
 	void PrintPintoolConfiguration() {
 		std::cout << std::string(50, '#') << std::endl;
 
-		std::cout << "PINTOOL CONFIGURATIONS:" << std::endl;
+		std::cout << "APPROXSS CONFIGURATIONS:" << std::endl;
 		std::cout << "\tFault Injector: " <<
 		#if DISTANCE_BASED_FAULT_INJECTOR
 			"Distance-Based"
@@ -463,12 +463,19 @@ int main(const int argc, char* argv[]) {
 	// Etc
 	srand((unsigned)getpid() * (unsigned)time(0));
 
+	unsigned int starting_seed;
+
 	if (!RNGSeed.Value().empty()) {
-		FaultInjector::generator[0] = std::default_random_engine{static_cast<unsigned int>(std::stoul(RNGSeed.Value()))};
+		starting_seed = static_cast<unsigned int>(std::stoul(RNGSeed.Value()));
 	} else {
-		FaultInjector::generator[0] = std::default_random_engine{static_cast<unsigned int>(std::random_device{}())};
+		starting_seed = static_cast<unsigned int>(std::random_device{}());
 	}
 
+	std::cout << std::string(50, '#') << std::endl;
+	std::cout << "ApproxSS initial seed: " << starting_seed << std::endl;
+	
+	FaultInjector::generator[0] = std::default_random_engine{starting_seed};
+	
 	std::uniform_int_distribution<unsigned int> dist(std::numeric_limits<unsigned int>::min(), std::numeric_limits<unsigned int>::max());
 
 	for (size_t i = 1; i < FaultInjector::genSize; ++i) {
