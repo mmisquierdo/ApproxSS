@@ -82,67 +82,67 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 
 # Build the intermediate object file.
 #$(OBJDIR)range$(OBJ_SUFFIX): range.cpp range.h compiling-options.h
-#	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+#	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 $(OBJDIR)fault-injector$(OBJ_SUFFIX): fault-injector.cpp fault-injector.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)period-log$(OBJ_SUFFIX): period-log.cpp period-log.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)injector-configuration$(OBJ_SUFFIX): injector-configuration.cpp injector-configuration.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)consumption-profile$(OBJ_SUFFIX): consumption-profile.cpp consumption-profile.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)configuration-input$(OBJ_SUFFIX): configuration-input.cpp configuration-input.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)tracking-buffer$(OBJ_SUFFIX): tracking-buffer.cpp tracking-buffer.h range.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)approximate-buffer$(OBJ_SUFFIX): approximate-buffer.cpp approximate-buffer.h tracking-buffer.h range.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)precise-buffer$(OBJ_SUFFIX): precise-buffer.cpp precise-buffer.h tracking-buffer.h buffer-interface.h range.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX): approximate-buffer-map-record.cpp approximate-buffer-map-record.h approximate-buffer.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file. 
 $(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX): approximate-buffer-array-record.cpp approximate-buffer-array-record.h approximate-buffer.h compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)approxss$(OBJ_SUFFIX): approxss.cpp compiling-options.h
-	$(CXX) $(TOOL_CXXFLAGS) -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)approx-globals$(OBJ_SUFFIX): approx-globals.cpp approx-globals.h compiling-options.h configuration-input.h approximate-buffer.h approximate-buffer-map-record.h approximate-buffer-array-record.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)thread-control$(OBJ_SUFFIX): thread-control.cpp thread-control.h approx-globals.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)pintool-control$(OBJ_SUFFIX): pintool-control.cpp pintool-control.h thread-control.h approx-globals.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the intermediate object file.
 $(OBJDIR)access-handler$(OBJ_SUFFIX): access-handler.cpp access-handler.h pintool-control.h thread-control.h approx-globals.h
-	$(CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
+	$(TOOL_CXX) $(TOOL_CXXFLAGS) -Wpedantic -Ofast -flto=auto $(COMP_OBJ)$@ $<
 
 # Build the tool as a dll (shared object).
 $(OBJDIR)approxss$(PINTOOL_SUFFIX): $(OBJDIR)approxss$(OBJ_SUFFIX) range.h $(OBJDIR)injector-configuration$(OBJ_SUFFIX) injector-configuration.h $(OBJDIR)consumption-profile$(OBJ_SUFFIX) consumption-profile.h $(OBJDIR)fault-injector$(OBJ_SUFFIX) fault-injector.h $(OBJDIR)tracking-buffer$(OBJ_SUFFIX) tracking-buffer.h buffer-interface.h $(OBJDIR)approximate-buffer$(OBJ_SUFFIX) approximate-buffer.h $(OBJDIR)precise-buffer$(OBJ_SUFFIX) precise-buffer.h $(OBJDIR)approximate-buffer-map-record$(OBJ_SUFFIX) approximate-buffer-map-record.h $(OBJDIR)approximate-buffer-array-record$(OBJ_SUFFIX) approximate-buffer-array-record.h $(OBJDIR)configuration-input$(OBJ_SUFFIX) configuration-input.h $(OBJDIR)period-log$(OBJ_SUFFIX) period-log.h compiling-options.h $(OBJDIR)approx-globals$(OBJ_SUFFIX) approx-globals.h $(OBJDIR)thread-control$(OBJ_SUFFIX) thread-control.h $(OBJDIR)pintool-control$(OBJ_SUFFIX) pintool-control.h $(OBJDIR)access-handler$(OBJ_SUFFIX) access-handler.h
-	$(LINKER) $(TOOL_LDFLAGS_NOOPT) -Wpedantic -Ofast -flto=auto $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
+	$(TOOL_LINKER) $(TOOL_LDFLAGS_NOOPT) -Wpedantic -Ofast -flto=auto $(LINK_EXE)$@ $(^:%.h=) $(TOOL_LPATHS) $(TOOL_LIBS)
